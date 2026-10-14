@@ -51,6 +51,8 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("slotTick open", () => {
   beforeEach(() => {
     for (const m of [generate, createStage, createRoom, deleteStage, deleteRoom]) m.mockReset();
     generate.mockResolvedValue(briefs);
+    deleteStage.mockResolvedValue(undefined);
+    deleteRoom.mockResolvedValue(undefined);
     createStage.mockImplementation(async (id: string) => `arn:stage/${id}`);
     createRoom.mockImplementation(async (id: string) => `arn:room/${id}`);
   });
@@ -115,13 +117,13 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("slotTick open", () => {
     await createBooking({ slotId: s, handle: "tw_buyer", role: "buyer" }, BOOKED_AT + n++);
     await tick(T(s) - 5 * 60_000);
     await tick(T(s) - 5 * 60_000);
-    await tick(T(s));
+    await tick(T(s) - 4 * 60_000);
     expect(createStage).toHaveBeenCalledTimes(1);
     expect(createRoom).toHaveBeenCalledTimes(1);
   });
 
   test("given IVS failure for one round, should still open the others and clean up", async () => {
-    const s = slots[5]!;
+    const s = slots[9]!; // spaced from earlier tests: ticks also cover neighbouring slots
     await createBooking({ slotId: s, handle: "x1_seller", role: "seller" }, BOOKED_AT + n++);
     await createBooking({ slotId: s, handle: "x1_buyer", role: "buyer" }, BOOKED_AT + n++);
     await createBooking({ slotId: s, handle: "x2_seller", role: "seller" }, BOOKED_AT + n++);
@@ -138,7 +140,7 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("slotTick open", () => {
     const statuses = (await roundsOf(s)).map((r) => r?.status).sort();
     expect(statuses).toEqual(["paired", "ready"]);
     expect(deleteStage).toHaveBeenCalledTimes(1); // orphaned stage removed
-    await tick(T(s)); // the failed round is retried next minute
+    await tick(T(s) - 4 * 60_000); // the failed round is retried next minute
     expect((await roundsOf(s)).every((r) => r?.status === "ready")).toBe(true);
   });
 

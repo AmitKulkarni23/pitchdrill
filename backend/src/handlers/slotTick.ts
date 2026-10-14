@@ -4,7 +4,8 @@ import { MetricUnit } from "@aws-lambda-powertools/metrics";
 import { listWaiting, markNoOpponent, pairWaiting } from "../lib/bookings";
 import { generateBriefs, fallbackBriefs, type Briefs } from "../lib/briefs";
 import { db, TABLE } from "../lib/db";
-import { createRoom, createStage, deleteRoom, deleteStage } from "../lib/ivs";
+import { sendRoundEvent } from "../lib/chatEvents";
+import { createRoom, createStage, deleteRoom, deleteStage, getActiveSessionId, listPublishingUserIds, startComposition } from "../lib/ivs";
 import { roundPk, slotPk } from "../lib/keys";
 import { logger, metrics } from "../lib/observability";
 import { pacificDate, slotsForDate } from "../lib/slots";
@@ -116,11 +117,77 @@ export async function openSlot(slotId: string) {
   }
 }
 
+/** Moves a round from one status to another; false when a concurrent tick already moved it. */
+async function transitionRound(roundId: string, from: string, to: string, extra: Record<string, unknown> = {}): Promise<boolean> {
+  const sets = ["#s = :to", ...Object.keys(extra).map((k) => `${k} = :${k}`)];
+  try {
+    await db.send(
+      new UpdateCommand({
+        TableName: TABLE,
+        Key: { PK: roundPk(roundId), SK: "META" },
+        UpdateExpression: `SET ${sets.join(", ")}`,
+        ConditionExpression: "#s = :from",
+        ExpressionAttributeNames: { "#s": "status" },
+        ExpressionAttributeValues: { ":from": from, ":to": to, ...Object.fromEntries(Object.entries(extra).map(([k, v]) => [`:${k}`, v])) },
+      }),
+    );
+    return true;
+  } catch (e) {
+    if (e instanceof ConditionalCheckFailedException) return false;
+    throw e;
+  }
+}
+
+/** Both the seller and the buyer must be connected and publishing on the stage. */
+async function bothPublishing(round: Round): Promise<boolean> {
+  const sessionId = await getActiveSessionId(round.stageArn);
+  if (!sessionId) return false;
+  const publishing = new Set(await listPublishingUserIds(round.stageArn, sessionId));
+  return publishing.has(round.sellerBookingId) && publishing.has(round.buyerBookingId);
+}
+
+/** Chat events are best effort: a failed announcement must not undo the transition. */
+async function announce(round: Round, eventName: string, attributes: Record<string, string>) {
+  await sendRoundEvent(round.chatRoomArn, eventName, attributes).catch((e) =>
+    logger.warn("Chat event failed", { roundId: round.roundId, eventName, error: (e as Error).message }),
+  );
+}
+
+async function goLive(round: Round) {
+  const compositionArn = await startComposition(round.stageArn);
+  const startedAt = new Date().toISOString();
+  if (!(await transitionRound(round.roundId, "ready", "live", { startedAt, compositionArn }))) return;
+  metrics.addMetric("RoundStarted", MetricUnit.Count, 1);
+  await announce(round, "round_started", { startedAt });
+}
+
+async function cancelNoShow(round: Round) {
+  if (!(await transitionRound(round.roundId, "ready", "cancelled", { cancelReason: "no_show" }))) return;
+  metrics.addMetric("RoundCancelled", MetricUnit.Count, 1);
+  await announce(round, "round_cancelled", { reason: "no_show" });
+  await deleteStage(round.stageArn).catch((e) => logger.error("Stage cleanup failed", { roundId: round.roundId, error: (e as Error).message }));
+  await deleteRoom(round.chatRoomArn).catch((e) => logger.error("Room cleanup failed", { roundId: round.roundId, error: (e as Error).message }));
+}
+
+/** T: ready rounds with both sides publishing go live; the rest are cancelled as no-shows. Idempotent. */
+export async function startSlot(slotId: string) {
+  for (const round of await roundsOf(slotId)) {
+    if (round.status !== "ready") continue;
+    try {
+      if (await bothPublishing(round)) await goLive(round);
+      else await cancelNoShow(round);
+    } catch (e) {
+      logger.error("Starting round failed", { slotId, roundId: round.roundId, error: (e as Error).message });
+    }
+  }
+}
+
 /** All SlotTick logic; later tasks add phases. */
 export async function tick(now: number) {
   for (const slotId of slotsInWindow(now)) {
     try {
-      await openSlot(slotId);
+      if (Date.parse(slotId) - OPEN_BEFORE_MS <= now) await openSlot(slotId);
+      if (Date.parse(slotId) <= now) await startSlot(slotId);
     } catch (e) {
       logger.error("Slot tick failed", { slotId, error: (e as Error).message });
     }

@@ -106,11 +106,28 @@ describe('stack', () => {
     expect(ivsActions).toEqual([
       'ivs:CreateStage',
       'ivs:DeleteStage',
+      'ivs:GetStage',
+      'ivs:ListParticipants',
+      'ivs:StartComposition',
+      'ivs:StartComposition',
       'ivs:TagResource',
       'ivschat:CreateRoom',
       'ivschat:DeleteRoom',
+      'ivschat:SendEvent',
       'ivschat:TagResource',
     ]);
+  });
+
+  test('SlotTick should know the storage and encoder configurations', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'PitchDrillSlotTick',
+      Environment: {
+        Variables: Match.objectLike({
+          STORAGE_CONFIGURATION_ARN_ENV: Match.anyValue(),
+          ENCODER_CONFIGURATION_ARN_ENV: Match.anyValue(),
+        }),
+      },
+    });
   });
 
   test('SlotTick alarms should exist, named by user impact', () => {

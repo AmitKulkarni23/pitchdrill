@@ -150,13 +150,13 @@ export class PitchDrillBackendStack extends cdk.Stack {
     // IVS has no CDK grant methods: scope to the exact actions and resource types SlotTick uses.
     slotTick.fn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['ivs:CreateStage', 'ivs:DeleteStage', 'ivs:TagResource'],
+        actions: ['ivs:CreateStage', 'ivs:DeleteStage', 'ivs:TagResource', 'ivs:GetStage', 'ivs:ListParticipants', 'ivs:StartComposition'],
         resources: [this.formatArn({ service: 'ivs', resource: 'stage', resourceName: '*' })],
       }),
     );
     slotTick.fn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['ivschat:CreateRoom', 'ivschat:DeleteRoom', 'ivschat:TagResource'],
+        actions: ['ivschat:CreateRoom', 'ivschat:DeleteRoom', 'ivschat:TagResource', 'ivschat:SendEvent'],
         resources: [this.formatArn({ service: 'ivschat', resource: 'room', resourceName: '*' })],
       }),
     );
@@ -210,6 +210,16 @@ export class PitchDrillBackendStack extends cdk.Stack {
       name: 'pitchdrill-recordings',
       s3: { bucketName: recordingsBucket.bucketName },
     });
+    // SlotTick starts compositions: it needs the configuration ARNs and StartComposition on them too.
+    slotTick.fn.addEnvironment('STORAGE_CONFIGURATION_ARN_ENV', this.storageConfiguration.attrArn);
+    slotTick.fn.addEnvironment('ENCODER_CONFIGURATION_ARN_ENV', this.encoderConfiguration.attrArn);
+    slotTick.fn.addToRolePolicy(
+      // IVS has no CDK grant methods.
+      new iam.PolicyStatement({
+        actions: ['ivs:StartComposition'],
+        resources: [this.storageConfiguration.attrArn, this.encoderConfiguration.attrArn],
+      }),
+    );
     // No bucket policy for IVS: composition output is written through the IVS service-linked role,
     // which IVS creates on first use. ponytail: confirm against the IVS real-time composition S3 docs
     // when deploying; if writes are denied, add a bucket resource policy here (bucket.addToResourcePolicy).

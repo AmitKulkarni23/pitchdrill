@@ -1,4 +1,11 @@
-import { CreateStageCommand, DeleteStageCommand, IVSRealTimeClient } from "@aws-sdk/client-ivs-realtime";
+import {
+  CreateStageCommand,
+  DeleteStageCommand,
+  GetStageCommand,
+  IVSRealTimeClient,
+  ListParticipantsCommand,
+  StartCompositionCommand,
+} from "@aws-sdk/client-ivs-realtime";
 import { CreateRoomCommand, DeleteRoomCommand, IvschatClient } from "@aws-sdk/client-ivschat";
 import { tracer } from "./observability";
 
@@ -25,4 +32,47 @@ export async function createRoom(roundId: string): Promise<string> {
 
 export async function deleteRoom(arn: string): Promise<void> {
   await rooms.send(new DeleteRoomCommand({ identifier: arn }));
+}
+
+/** The stage's current session ID, or undefined when nobody has joined. */
+export async function getActiveSessionId(stageArn: string): Promise<string | undefined> {
+  const { stage } = await stages.send(new GetStageCommand({ arn: stageArn }));
+  return stage?.activeSessionId || undefined;
+}
+
+/** User IDs (booking IDs) of participants currently connected and publishing. */
+export async function listPublishingUserIds(stageArn: string, sessionId: string): Promise<string[]> {
+  const ids: string[] = [];
+  let nextToken: string | undefined;
+  do {
+    const page = await stages.send(
+      new ListParticipantsCommand({ stageArn, sessionId, filterByPublished: true, filterByState: "CONNECTED", nextToken }),
+    );
+    for (const p of page.participants ?? []) if (p.userId) ids.push(p.userId);
+    nextToken = page.nextToken;
+  } while (nextToken);
+  return ids;
+}
+
+/**
+ * Starts the split-screen recording to S3 and returns the composition ARN.
+ * The grid orders tiles by the participant `order` attribute: seller "1" on the left, buyer "2" on the right.
+ */
+export async function startComposition(stageArn: string): Promise<string> {
+  const { composition } = await stages.send(
+    new StartCompositionCommand({
+      stageArn,
+      layout: { grid: { participantOrderAttribute: "order" } },
+      destinations: [
+        {
+          s3: {
+            storageConfigurationArn: process.env.STORAGE_CONFIGURATION_ARN_ENV,
+            encoderConfigurationArns: [process.env.ENCODER_CONFIGURATION_ARN_ENV!],
+          },
+        },
+      ],
+    }),
+  );
+  if (!composition?.arn) throw new Error("StartComposition returned no ARN");
+  return composition.arn;
 }

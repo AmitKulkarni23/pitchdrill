@@ -14,7 +14,7 @@ Done before these specs (phase 1): booking core, ticket lookup, slots, CDK stack
 - ~~[TASK-004 — Replay GSI, table stream and OpenRouter secret](infra/004-gsi-stream-and-openrouter-secret.md) · depends on: 003 · **asks the user** for the model ID and to set the key~~ (model chosen; `cdk diff`/deploy and setting the secret left for the user)
 - ~~[TASK-005 — Generate briefs with OpenRouter](backend/005-generate-briefs.md) · depends on: 001, 004~~ (deploy and event-source check left for the user)
 - ~~[TASK-006 — SlotTick: open slots (T-5 minutes)](backend/006-slot-tick-open.md) · depends on: 001, 002, 005~~ (deploy and schedule check left for the user)
-- [TASK-007 — SlotTick: start rounds or cancel no-shows (T)](backend/007-slot-tick-start.md) · depends on: 003, 006
+- ~~[TASK-007 — SlotTick: start rounds or cancel no-shows (T)](backend/007-slot-tick-start.md) · depends on: 003, 006~~ (`cdk diff`/deploy left for the user)
 - [TASK-008 — SlotTick: buzzer, cleanup and replay registration](backend/008-slot-tick-end-and-recordings.md) · depends on: 007
 - [TASK-009 — Round details, briefs, join and watch tokens](backend/009-round-read-join-watch.md) · depends on: 002, 006
 - [TASK-010 — Spectator chat tokens with nicknames](backend/010-spectator-chat-tokens.md) · depends on: 009
