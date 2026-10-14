@@ -7,6 +7,7 @@ import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations
 import { AccessLogFormat } from 'aws-cdk-lib/aws-apigateway';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -56,7 +57,6 @@ export class PitchDrillBackendStack extends cdk.Stack {
     });
 
     // Placeholder only; the real key is set out of band (aws secretsmanager put-secret-value) so it never enters Git.
-    // OPENROUTER_MODEL and this secret are wired into GenerateBriefs in TASK-005.
     const openRouterSecret = new secretsmanager.Secret(this, 'PitchDrillOpenRouterSecret', {
       secretName: 'pitchdrill/openrouter-api-key',
       secretStringValue: cdk.SecretValue.unsafePlainText('set-me'),
@@ -70,7 +70,7 @@ export class PitchDrillBackendStack extends cdk.Stack {
     // Handlers are bundled by `bun run build` in backend/ (cdk.json runs it before synth).
     const code = lambda.Code.fromAsset(path.join(__dirname, '../../backend/dist'));
 
-    const makeFunction = (name: string) => {
+    const makeFunction = (name: string, opts: { timeout?: cdk.Duration; environment?: Record<string, string> } = {}) => {
       const logGroup = new logs.LogGroup(this, `PitchDrill${name}Logs`, {
         logGroupName: `/aws/lambda/PitchDrill${name}`,
         retention: logs.RetentionDays.ONE_MONTH,
@@ -83,10 +83,10 @@ export class PitchDrillBackendStack extends cdk.Stack {
         code,
         handler: `${name[0]!.toLowerCase()}${name.slice(1)}.handler`,
         memorySize: 256,
-        timeout: cdk.Duration.seconds(10),
+        timeout: opts.timeout ?? cdk.Duration.seconds(10),
         tracing: lambda.Tracing.ACTIVE,
         logGroup,
-        environment: { TABLE_NAME_ENV: table.tableName },
+        environment: { TABLE_NAME_ENV: table.tableName, ...opts.environment },
       });
       return { fn, logGroup };
     };
@@ -109,6 +109,27 @@ export class PitchDrillBackendStack extends cdk.Stack {
       else if (grant === 'read') table.grantReadData(fn);
       else throw new Error(`No table grant declared for handler "${handler}"`);
     }
+
+    // Not an API route: triggered by the table stream for each new round META item.
+    const generateBriefs = makeFunction('GenerateBriefs', {
+      timeout: cdk.Duration.seconds(60),
+      environment: { OPENROUTER_SECRET_ARN_ENV: openRouterSecret.secretArn, OPENROUTER_MODEL_ENV: OPENROUTER_MODEL },
+    });
+    openRouterSecret.grantRead(generateBriefs.fn);
+    table.grantWriteData(generateBriefs.fn);
+    generateBriefs.fn.addEventSource(
+      new DynamoEventSource(table, {
+        startingPosition: lambda.StartingPosition.LATEST,
+        batchSize: 10,
+        retryAttempts: 0,
+        filters: [
+          lambda.FilterCriteria.filter({
+            eventName: lambda.FilterRule.isEqual('INSERT'),
+            dynamodb: { Keys: { SK: { S: lambda.FilterRule.isEqual('META') } } },
+          }),
+        ],
+      }),
+    );
 
     // ======================
     // 2b. MEDIA LAYER

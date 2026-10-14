@@ -58,6 +58,30 @@ describe('stack', () => {
     });
   });
 
+  test('GenerateBriefs should be fed by the table stream for META inserts only', () => {
+    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
+      StartingPosition: 'LATEST',
+      BatchSize: 10,
+      MaximumRetryAttempts: 0,
+      FilterCriteria: {
+        Filters: [
+          { Pattern: Match.stringLikeRegexp('INSERT') },
+        ],
+      },
+    });
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'PitchDrillGenerateBriefs',
+      Timeout: 60,
+      Environment: {
+        Variables: Match.objectLike({
+          OPENROUTER_MODEL_ENV: 'anthropic/claude-haiku-5.5',
+          OPENROUTER_SECRET_ARN_ENV: Match.anyValue(),
+          TABLE_NAME_ENV: Match.anyValue(),
+        }),
+      },
+    });
+  });
+
   test('recordings bucket should block all public access and enforce SSL', () => {
     template.hasResource('AWS::S3::Bucket', {
       DeletionPolicy: 'Retain',
