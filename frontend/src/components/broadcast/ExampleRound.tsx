@@ -2,7 +2,7 @@
 
 import { Box } from "@mui/material";
 import { useNow } from "@/hooks/useClock";
-import { studio, strapType, fonts } from "@/config/theme";
+import { studio, strapType, fonts } from "@/config/tokens";
 import { ROUND_SECONDS } from "@/lib/slots";
 import { OnAirClock } from "./OnAirClock";
 import { Strap } from "./Strap";

@@ -5,7 +5,7 @@ import { Box, ButtonBase, Typography } from "@mui/material";
 import { useNow, useTimeZone } from "@/hooks/useClock";
 import { api } from "@/lib/api";
 import { dayLabel, groupSlotsByLocalDay, scheduleSlots, timeLabel, waitingLabel } from "@/lib/slots";
-import { studio, strapType } from "@/config/theme";
+import { studio, strapType } from "@/config/tokens";
 import type { SlotWithStats } from "@/types/api";
 import { Arrow } from "./Arrow";
 import { BookingDesk } from "./BookingDesk";
@@ -77,7 +77,7 @@ export function ProgramGuide() {
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(168px, 1fr))",
           gap: "2px",
-          bgcolor: studio.cobaltLine,
+          bgcolor: studio.cobaltNight,
           border: `2px solid ${studio.cobaltLine}`,
           borderTop: 0,
         }}

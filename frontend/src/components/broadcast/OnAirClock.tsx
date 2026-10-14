@@ -1,5 +1,5 @@
 import { Box } from "@mui/material";
-import { studio, strapType } from "@/config/theme";
+import { studio, strapType } from "@/config/tokens";
 
 export const formatClock = (seconds: number) => {
   const s = Math.max(0, Math.ceil(seconds));

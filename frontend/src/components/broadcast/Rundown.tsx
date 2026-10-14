@@ -1,5 +1,5 @@
 import { Box, Typography } from "@mui/material";
-import { studio, strapType } from "@/config/theme";
+import { studio, strapType } from "@/config/tokens";
 
 const ROWS = [
   { code: "Up to 7 days", title: "Book a slot", body: "Pick a time, choose seller or buyer, type a handle. You get a private ticket link and a calendar reminder. No signup." },

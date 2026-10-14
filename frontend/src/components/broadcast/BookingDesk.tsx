@@ -7,7 +7,7 @@ import { buildIcs, downloadIcs } from "@/lib/ics";
 import { dayLabel, timeLabel } from "@/lib/slots";
 import { addTicket } from "@/lib/storage";
 import { isValidHandle } from "@/lib/validation";
-import { studio, strapType } from "@/config/theme";
+import { studio, strapType } from "@/config/tokens";
 import type { CreateBookingResponse, Role } from "@/types/api";
 import { Strap } from "./Strap";
 

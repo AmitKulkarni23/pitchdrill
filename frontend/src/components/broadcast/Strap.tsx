@@ -1,5 +1,5 @@
 import { Box } from "@mui/material";
-import { studio, strapType, fonts } from "@/config/theme";
+import { studio, strapType, fonts } from "@/config/tokens";
 
 const TAB_COLORS = {
   seller: { bg: studio.signal, fg: studio.ink },

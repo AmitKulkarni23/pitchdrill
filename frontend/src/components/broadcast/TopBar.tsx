@@ -2,7 +2,7 @@
 
 import { Box } from "@mui/material";
 import { useNow, useTimeZone } from "@/hooks/useClock";
-import { studio, strapType } from "@/config/theme";
+import { studio, strapType } from "@/config/tokens";
 import { dayLabel, scheduleSlots, timeLabel } from "@/lib/slots";
 
 const until = (ms: number) => {

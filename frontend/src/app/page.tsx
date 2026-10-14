@@ -3,7 +3,7 @@ import { ExampleRound } from "@/components/broadcast/ExampleRound";
 import { ProgramGuide } from "@/components/broadcast/ProgramGuide";
 import { Rundown } from "@/components/broadcast/Rundown";
 import { TopBar } from "@/components/broadcast/TopBar";
-import { studio, strapType } from "@/config/theme";
+import { studio, strapType } from "@/config/tokens";
 
 const section = { px: { xs: 2, sm: 4, lg: 6 }, maxWidth: 1360, mx: "auto" } as const;
 
