@@ -126,11 +126,11 @@ export class PitchDrillBackendStack extends cdk.Stack {
     });
     const cfnStage = stage.node.defaultChild as apigw.CfnStage;
     cfnStage.routeSettings = {
-      'POST /bookings': { throttlingRateLimit: 10, throttlingBurstLimit: 20 },
-      'GET /ticket': { throttlingRateLimit: 20, throttlingBurstLimit: 40 },
-      'GET /slots': { throttlingRateLimit: 20, throttlingBurstLimit: 40 },
+      'POST /bookings': { ThrottlingRateLimit: 10, ThrottlingBurstLimit: 20 },
+      'GET /ticket': { ThrottlingRateLimit: 20, ThrottlingBurstLimit: 40 },
+      'GET /slots': { ThrottlingRateLimit: 20, ThrottlingBurstLimit: 40 },
     };
-    // Route settings must reference routes that already exist.
+    // routeSettings is a raw JSON map, so keys use CloudFormation PascalCase. Routes must exist first.
     routes.forEach((route) => cfnStage.node.addDependency(route));
 
     // ======================
