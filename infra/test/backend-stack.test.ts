@@ -30,6 +30,34 @@ describe('stack', () => {
     });
   });
 
+  test('table should have GSI1 with ALL projection', () => {
+    template.hasResourceProperties('AWS::DynamoDB::GlobalTable', {
+      GlobalSecondaryIndexes: [
+        {
+          IndexName: 'GSI1',
+          KeySchema: [
+            { AttributeName: 'GSI1PK', KeyType: 'HASH' },
+            { AttributeName: 'GSI1SK', KeyType: 'RANGE' },
+          ],
+          Projection: { ProjectionType: 'ALL' },
+        },
+      ],
+    });
+  });
+
+  test('table should stream NEW_IMAGE', () => {
+    template.hasResourceProperties('AWS::DynamoDB::GlobalTable', {
+      StreamSpecification: { StreamViewType: 'NEW_IMAGE' },
+    });
+  });
+
+  test('OpenRouter secret should exist and be retained', () => {
+    template.hasResource('AWS::SecretsManager::Secret', {
+      DeletionPolicy: 'Retain',
+      Properties: { Name: 'pitchdrill/openrouter-api-key' },
+    });
+  });
+
   test('recordings bucket should block all public access and enforce SSL', () => {
     template.hasResource('AWS::S3::Bucket', {
       DeletionPolicy: 'Retain',

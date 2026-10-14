@@ -13,6 +13,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as ivs from 'aws-cdk-lib/aws-ivs';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { routes } from '../../backend/src/routes';
 
 // Browser origins allowed to call the API. Add the Vercel domain once the frontend is deployed.
@@ -38,6 +39,23 @@ export class PitchDrillBackendStack extends cdk.Stack {
       billing: dynamodb.Billing.onDemand(),
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
       deletionProtection: true,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      // GSI1 lists replays newest first; the stream triggers GenerateBriefs when a round is paired.
+      globalSecondaryIndexes: [
+        {
+          indexName: 'GSI1',
+          partitionKey: { name: 'GSI1PK', type: dynamodb.AttributeType.STRING },
+          sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
+          projectionType: dynamodb.ProjectionType.ALL,
+        },
+      ],
+      dynamoStream: dynamodb.StreamViewType.NEW_IMAGE,
+    });
+
+    // Placeholder only; the real key is set out of band (aws secretsmanager put-secret-value) so it never enters Git.
+    const openRouterSecret = new secretsmanager.Secret(this, 'PitchDrillOpenRouterSecret', {
+      secretName: 'pitchdrill/openrouter-api-key',
+      secretStringValue: cdk.SecretValue.unsafePlainText('set-me'),
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
