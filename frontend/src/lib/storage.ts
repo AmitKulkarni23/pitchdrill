@@ -1,6 +1,6 @@
 // Every read/write is guarded: storage can be missing or throw (private mode, blocked site data).
 
-const KEYS = { voterId: "pd.voterId", nickname: "pd.nickname", tickets: "pd.tickets" } as const;
+const KEYS = { voterId: "pd.voterId", nickname: "pd.nickname", tickets: "pd.tickets", votes: "pd.votes" } as const;
 
 function read(key: string): string | null {
   try {
@@ -45,3 +45,18 @@ export function addTicket(ticket: string): void {
   const tickets = getTickets();
   if (!tickets.includes(ticket)) write(KEYS.tickets, JSON.stringify([...tickets, ticket]));
 }
+
+type Vote = "sold" | "not_sold";
+
+function votes(): Record<string, Vote> {
+  try {
+    const parsed = JSON.parse(read(KEYS.votes) ?? "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Remembers how this browser voted so the buttons stay disabled after a reload. */
+export const rememberVote = (roundId: string, vote: Vote): void => write(KEYS.votes, JSON.stringify({ ...votes(), [roundId]: vote }));
+export const getRememberedVote = (roundId: string): Vote | null => votes()[roundId] ?? null;

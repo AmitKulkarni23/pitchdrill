@@ -1,0 +1,230 @@
+import { existsSync } from 'node:fs';
+import * as path from 'node:path';
+import { beforeAll, describe, expect, test } from 'bun:test';
+import * as cdk from 'aws-cdk-lib';
+import { Match, Template } from 'aws-cdk-lib/assertions';
+import { PitchDrillBackendStack } from '../lib/backend-stack';
+
+const backend = path.join(__dirname, '../../backend');
+let template: Template;
+
+beforeAll(() => {
+  // Code.fromAsset needs backend/dist to exist.
+  if (!existsSync(path.join(backend, 'dist'))) {
+    const build = Bun.spawnSync(['bun', 'run', 'build'], { cwd: backend });
+    if (build.exitCode !== 0) throw new Error(`backend build failed: ${build.stderr}`);
+  }
+  const app = new cdk.App();
+  const stack = new PitchDrillBackendStack(app, 'TestStack', { env: { account: '123456789012', region: 'us-west-2' } });
+  template = Template.fromStack(stack);
+});
+
+describe('stack', () => {
+  test('table should be retained with deletion protection', () => {
+    template.hasResource('AWS::DynamoDB::GlobalTable', {
+      DeletionPolicy: 'Retain',
+      Properties: {
+        TableName: 'pitchdrill-main',
+        Replicas: [Match.objectLike({ DeletionProtectionEnabled: true })],
+      },
+    });
+  });
+
+  test('table should have GSI1 with ALL projection', () => {
+    template.hasResourceProperties('AWS::DynamoDB::GlobalTable', {
+      GlobalSecondaryIndexes: [
+        {
+          IndexName: 'GSI1',
+          KeySchema: [
+            { AttributeName: 'GSI1PK', KeyType: 'HASH' },
+            { AttributeName: 'GSI1SK', KeyType: 'RANGE' },
+          ],
+          Projection: { ProjectionType: 'ALL' },
+        },
+      ],
+    });
+  });
+
+  test('table should stream NEW_IMAGE', () => {
+    template.hasResourceProperties('AWS::DynamoDB::GlobalTable', {
+      StreamSpecification: { StreamViewType: 'NEW_IMAGE' },
+    });
+  });
+
+  test('OpenRouter secret should exist and be retained', () => {
+    template.hasResource('AWS::SecretsManager::Secret', {
+      DeletionPolicy: 'Retain',
+      Properties: { Name: 'pitchdrill/openrouter-api-key' },
+    });
+  });
+
+  test('GenerateBriefs should be fed by the table stream for META inserts only', () => {
+    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
+      StartingPosition: 'LATEST',
+      BatchSize: 10,
+      MaximumRetryAttempts: 0,
+      FilterCriteria: {
+        Filters: [
+          { Pattern: Match.stringLikeRegexp('INSERT') },
+        ],
+      },
+    });
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'PitchDrillGenerateBriefs',
+      Timeout: 60,
+      Environment: {
+        Variables: Match.objectLike({
+          OPENROUTER_MODEL_ENV: 'anthropic/claude-haiku-5.5',
+          OPENROUTER_SECRET_ARN_ENV: Match.anyValue(),
+          TABLE_NAME_ENV: Match.anyValue(),
+        }),
+      },
+    });
+  });
+
+  test('SlotTick should run every minute 15:00-21:59 Pacific, single-flight', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'PitchDrillSlotTick',
+      Timeout: 60,
+      MemorySize: 512,
+      ReservedConcurrentExecutions: 1,
+    });
+    template.hasResourceProperties('AWS::Scheduler::Schedule', {
+      ScheduleExpression: 'cron(* 15-21 * * ? *)',
+      ScheduleExpressionTimezone: 'America/Los_Angeles',
+      Target: Match.objectLike({ RetryPolicy: { MaximumRetryAttempts: 0 } }),
+    });
+  });
+
+  test('IVS permissions should be limited to the exact stage, room and composition actions in use', () => {
+    const policies = template.findResources('AWS::IAM::Policy');
+    const statements = Object.values(policies).flatMap((p: any) => p.Properties.PolicyDocument.Statement);
+    const ivsActions = statements
+      .flatMap((st: any) => (Array.isArray(st.Action) ? st.Action : [st.Action]))
+      .filter((a: string) => a.startsWith('ivs'))
+      .sort();
+    expect([...new Set(ivsActions)]).toEqual(
+      [
+        'ivs:CreateParticipantToken',
+        'ivs:CreateStage',
+        'ivs:DeleteStage',
+        'ivs:GetStage',
+        'ivs:ListParticipants',
+        'ivs:StartComposition',
+        'ivs:StopComposition',
+        'ivs:TagResource',
+        'ivschat:CreateChatToken',
+        'ivschat:CreateRoom',
+        'ivschat:DeleteRoom',
+        'ivschat:SendEvent',
+        'ivschat:TagResource',
+      ].sort(),
+    );  });
+
+  test('SlotTick should know the storage and encoder configurations', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'PitchDrillSlotTick',
+      Environment: {
+        Variables: Match.objectLike({
+          STORAGE_CONFIGURATION_ARN_ENV: Match.anyValue(),
+          ENCODER_CONFIGURATION_ARN_ENV: Match.anyValue(),
+          RECORDINGS_BUCKET_ENV: Match.anyValue(),
+        }),
+      },
+    });
+  });
+
+  test('round read functions should know the recordings CDN, and join should have an alarm', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'PitchDrillGetRound',
+      Environment: { Variables: Match.objectLike({ RECORDINGS_CDN_DOMAIN_ENV: Match.anyValue() }) },
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', { AlarmName: 'pitchdrill-users-cannot-join-rounds' });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', { AlarmName: 'pitchdrill-users-cannot-vote' });
+  });
+
+  test('admin routes should require IAM, public routes should not set an authorizer', () => {
+    const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route')).map((r: any) => r.Properties);
+    const admin = routes.filter((r) => String(r.RouteKey).includes(' /admin/'));
+    expect(admin).toHaveLength(3);
+    for (const r of admin) expect(r.AuthorizationType).toBe('AWS_IAM');
+  });
+
+  test('replay feed should read the GSI', () => {
+    const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('/index/*');
+  });
+
+  test('SlotTick alarms should exist, named by user impact', () => {
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', { AlarmName: 'pitchdrill-rounds-not-starting' });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'pitchdrill-rounds-using-fallback-briefs',
+      Threshold: 3,
+    });
+  });
+
+  test('recordings bucket should block all public access and enforce SSL', () => {
+    template.hasResource('AWS::S3::Bucket', {
+      DeletionPolicy: 'Retain',
+      Properties: {
+        BucketName: 'pitchdrill-recordings-123456789012',
+        PublicAccessBlockConfiguration: {
+          BlockPublicAcls: true,
+          BlockPublicPolicy: true,
+          IgnorePublicAcls: true,
+          RestrictPublicBuckets: true,
+        },
+        BucketEncryption: Match.objectLike({
+          ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: 'AES256' } }],
+        }),
+      },
+    });
+    template.hasResourceProperties('AWS::S3::BucketPolicy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({ Effect: 'Deny', Condition: { Bool: { 'aws:SecureTransport': 'false' } } }),
+        ]),
+      },
+    });
+  });
+
+  test('distribution should use origin access control', () => {
+    template.resourceCountIs('AWS::CloudFront::OriginAccessControl', 1);
+    template.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        Origins: [Match.objectLike({ OriginAccessControlId: Match.anyValue(), S3OriginConfig: { OriginAccessIdentity: '' } })],
+        DefaultCacheBehavior: Match.objectLike({ ViewerProtocolPolicy: 'redirect-to-https' }),
+      }),
+    });
+  });
+
+  test('distribution should send CORS headers for allowed origins', () => {
+    template.hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
+      ResponseHeadersPolicyConfig: Match.objectLike({
+        CorsConfig: Match.objectLike({
+          AccessControlAllowOrigins: { Items: ['http://localhost:3000'] },
+          AccessControlAllowMethods: { Items: ['GET', 'HEAD'] },
+          OriginOverride: true,
+        }),
+      }),
+    });
+  });
+
+  test('storage configuration should point at the recordings bucket', () => {
+    template.hasResourceProperties('AWS::IVS::StorageConfiguration', {
+      Name: 'pitchdrill-recordings',
+      S3: { BucketName: Match.anyValue() },
+    });
+  });
+
+  test('encoder configuration should be 720p30 at 2.5 Mbps', () => {
+    template.hasResourceProperties('AWS::IVS::EncoderConfiguration', {
+      Name: 'pitchdrill-composite',
+      Video: { Width: 1280, Height: 720, Framerate: 30, Bitrate: 2500000 },
+    });
+  });
+
+  test('should output the recordings CDN domain', () => {
+    template.hasOutput('PitchDrillRecordingsCdnDomainOutput', { Export: { Name: 'PitchDrillRecordingsCdnDomain' } });
+  });
+});

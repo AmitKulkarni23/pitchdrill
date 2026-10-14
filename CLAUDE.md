@@ -39,7 +39,8 @@ pitchdrill/
 ├── frontend/                 # Next.js app (App Router), deployed to Vercel
 │   ├── src/
 │   │   ├── app/              # Pages, layouts
-│   │   ├── components/       # Reusable React components
+│   │   ├── components/       # Reusable React components (broadcast/, arena/)
+│   │   ├── hooks/            # useNow, usePolling, useStage, useRoundEvents
 │   │   ├── config/           # API base URL, environment config
 │   │   ├── types/            # TypeScript type definitions
 │   │   └── lib/              # Utility functions, API client, ticket storage
@@ -94,6 +95,8 @@ cd frontend && bun run test      # bun test on src/lib
 ```bash
 cd backend && bun install
 cd backend && bun run typecheck
+cd backend && bun run dev:table    # (re)create the local table in DynamoDB Local
+cd backend && bun run dev          # local API on http://localhost:4000 (same routes as src/routes.ts, auth ignored)
 cd backend && bun run build        # bundles handlers to backend/dist (infra runs this on synth)
 
 # Tests run against DynamoDB Local (OrbStack/Docker must be running)
@@ -105,6 +108,7 @@ cd backend && bun run test:local
 
 ```bash
 cd infra && bun install
+cd infra && bun test                # CDK assertion tests
 cd infra && bunx cdk synth
 cd infra && bunx cdk diff
 cd infra && bunx cdk deploy --all   # deploys to the default AWS profile's account, us-west-2
@@ -118,6 +122,16 @@ curl --aws-sigv4 "aws:amz:us-west-2:execute-api" --user "$AWS_ACCESS_KEY_ID:$AWS
   ${AWS_SESSION_TOKEN:+-H "x-amz-security-token: $AWS_SESSION_TOKEN"} \
   https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com/slots
 ```
+ Admin routes (always IAM-only, even after the API is opened) use the same signing:
+
+```bash
+API=https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com
+SIGN=(--aws-sigv4 "aws:amz:us-west-2:execute-api" --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" ${AWS_SESSION_TOKEN:+-H "x-amz-security-token: $AWS_SESSION_TOKEN"})
+curl "${SIGN[@]}" $API/admin/reports                         # recent reports
+curl "${SIGN[@]}" -X POST $API/admin/rounds/<id>/end         # end a live round
+curl "${SIGN[@]}" -X POST $API/admin/rounds/<id>/hide        # hide a replay
+```
+
  A failed *first* create strands the retained `pitchdrill-main` table; delete it (deletion protection off first) before redeploying.
 
 ### Vercel

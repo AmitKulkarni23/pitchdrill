@@ -36,3 +36,13 @@ test("addTicket: should not duplicate tickets", () => {
   addTicket("b");
   expect(getTickets()).toEqual(["a", "b"]);
 });
+
+import { getRememberedVote, rememberVote } from "./storage";
+
+test("rememberVote/getRememberedVote: should persist per round", () => {
+  expect(getRememberedVote("r1")).toBeNull();
+  rememberVote("r1", "sold");
+  rememberVote("r2", "not_sold");
+  expect(getRememberedVote("r1")).toBe("sold");
+  expect(getRememberedVote("r2")).toBe("not_sold");
+});

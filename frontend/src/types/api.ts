@@ -24,3 +24,20 @@ export interface CreateBookingResponse {
   ticket: string;
   booking: Booking;
 }
+
+export type RoundStatus = "paired" | "ready" | "live" | "cancelled" | "ended" | "closed";
+
+/** Public round shape (no briefs). Mirrors toPublicRound in the backend. */
+export interface PublicRound {
+  roundId: string;
+  slotId: string;
+  status: RoundStatus;
+  sellerHandle: string;
+  buyerHandle: string;
+  startedAt?: string;
+  endedAt?: string;
+  cancelReason?: "no_show" | "admin";
+  votesSold: number;
+  votesNotSold: number;
+  replayUrl?: string;
+}
