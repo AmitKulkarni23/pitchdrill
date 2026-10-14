@@ -104,8 +104,9 @@ export function ExampleRound() {
                   sx={{
                     height: "100%",
                     bgcolor: row.color,
-                    width: live ? "0%" : `${row.value}%`,
-                    transition: "width 900ms cubic-bezier(0.16, 1, 0.3, 1) 300ms",
+                    transformOrigin: "left",
+                    transform: `scaleX(${live ? 0 : row.value / 100})`,
+                    transition: "transform 900ms cubic-bezier(0.16, 1, 0.3, 1) 300ms",
                   }}
                 />
               </Box>
