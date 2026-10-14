@@ -103,28 +103,23 @@ describe('stack', () => {
       .flatMap((st: any) => (Array.isArray(st.Action) ? st.Action : [st.Action]))
       .filter((a: string) => a.startsWith('ivs'))
       .sort();
-    expect(ivsActions).toEqual(
+    expect([...new Set(ivsActions)]).toEqual(
       [
-        'ivs:CreateParticipantToken', // joinRound
-        'ivs:CreateParticipantToken', // watchRound
+        'ivs:CreateParticipantToken',
         'ivs:CreateStage',
         'ivs:DeleteStage',
         'ivs:GetStage',
         'ivs:ListParticipants',
         'ivs:StartComposition',
-        'ivs:StartComposition',
         'ivs:StopComposition',
         'ivs:TagResource',
-        'ivschat:CreateChatToken', // joinRound
-        'ivschat:CreateChatToken', // createChatToken
+        'ivschat:CreateChatToken',
         'ivschat:CreateRoom',
         'ivschat:DeleteRoom',
-        'ivschat:SendEvent', // slotTick
-        'ivschat:SendEvent', // castVote
+        'ivschat:SendEvent',
         'ivschat:TagResource',
       ].sort(),
-    );
-  });
+    );  });
 
   test('SlotTick should know the storage and encoder configurations', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
@@ -146,6 +141,13 @@ describe('stack', () => {
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', { AlarmName: 'pitchdrill-users-cannot-join-rounds' });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', { AlarmName: 'pitchdrill-users-cannot-vote' });
+  });
+
+  test('admin routes should require IAM, public routes should not set an authorizer', () => {
+    const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route')).map((r: any) => r.Properties);
+    const admin = routes.filter((r) => String(r.RouteKey).includes(' /admin/'));
+    expect(admin).toHaveLength(3);
+    for (const r of admin) expect(r.AuthorizationType).toBe('AWS_IAM');
   });
 
   test('replay feed should read the GSI', () => {

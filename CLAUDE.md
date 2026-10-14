@@ -121,6 +121,16 @@ curl --aws-sigv4 "aws:amz:us-west-2:execute-api" --user "$AWS_ACCESS_KEY_ID:$AWS
   ${AWS_SESSION_TOKEN:+-H "x-amz-security-token: $AWS_SESSION_TOKEN"} \
   https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com/slots
 ```
+ Admin routes (always IAM-only, even after the API is opened) use the same signing:
+
+```bash
+API=https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com
+SIGN=(--aws-sigv4 "aws:amz:us-west-2:execute-api" --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" ${AWS_SESSION_TOKEN:+-H "x-amz-security-token: $AWS_SESSION_TOKEN"})
+curl "${SIGN[@]}" $API/admin/reports                         # recent reports
+curl "${SIGN[@]}" -X POST $API/admin/rounds/<id>/end         # end a live round
+curl "${SIGN[@]}" -X POST $API/admin/rounds/<id>/hide        # hide a replay
+```
+
  A failed *first* create strands the retained `pitchdrill-main` table; delete it (deletion protection off first) before redeploying.
 
 ### Vercel

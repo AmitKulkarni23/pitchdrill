@@ -11,4 +11,8 @@ describe("routes", () => {
     const keys = routes.map((r) => `${r.method} ${r.path}`);
     expect(new Set(keys).size).toBe(keys.length);
   });
+  test("admin routes should all be auth iam, and nothing else", () => {
+    for (const r of routes) expect(r.auth === "iam").toBe(r.path.startsWith("/admin/"));
+    expect(routes.filter((r) => r.auth === "iam")).toHaveLength(3);
+  });
 });

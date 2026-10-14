@@ -119,6 +119,10 @@ export class PitchDrillBackendStack extends cdk.Stack {
       listReplays: 'read',
       listComments: 'read',
       createComment: 'readWrite',
+      reportRound: 'readWrite',
+      adminListReports: 'read',
+      adminEndRound: 'readWrite',
+      adminHideRound: 'readWrite',
     };
     for (const [handler, { fn }] of Object.entries(fns)) {
       const grant = tableGrants[handler];
@@ -136,6 +140,17 @@ export class PitchDrillBackendStack extends cdk.Stack {
     for (const handler of ['joinRound', 'createChatToken']) {
       fns[handler]!.fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['ivschat:CreateChatToken'], resources: roomArns }));
     }
+    // adminEndRound stops compositions and deletes stages/rooms, like SlotTick.
+    fns.adminEndRound!.fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['ivs:DeleteStage'], resources: stageArns }));
+    fns.adminEndRound!.fn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ivs:StopComposition'],
+        resources: [this.formatArn({ service: 'ivs', resource: 'composition', resourceName: '*' })],
+      }),
+    );
+    fns.adminEndRound!.fn.addToRolePolicy(
+      new iam.PolicyStatement({ actions: ['ivschat:SendEvent', 'ivschat:DeleteRoom'], resources: roomArns }),
+    );
     // castVote broadcasts the new tally to the round's chat room.
     fns.castVote!.fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['ivschat:SendEvent'], resources: roomArns }));
 

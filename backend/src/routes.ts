@@ -26,4 +26,9 @@ export const routes: RouteDef[] = [
   { method: "GET", path: "/replays", handler: "listReplays", auth: "public", throttle: { rateLimit: 20, burstLimit: 40 } },
   { method: "GET", path: "/rounds/{roundId}/comments", handler: "listComments", auth: "public", throttle: { rateLimit: 20, burstLimit: 40 } },
   { method: "POST", path: "/rounds/{roundId}/comments", handler: "createComment", auth: "public", throttle: { rateLimit: 20, burstLimit: 40 } },
+  { method: "POST", path: "/rounds/{roundId}/reports", handler: "reportRound", auth: "public", throttle: { rateLimit: 5, burstLimit: 10 } },
+  // Admin routes stay IAM-only even after the public API is opened (TASK-021).
+  { method: "GET", path: "/admin/reports", handler: "adminListReports", auth: "iam" },
+  { method: "POST", path: "/admin/rounds/{roundId}/end", handler: "adminEndRound", auth: "iam" },
+  { method: "POST", path: "/admin/rounds/{roundId}/hide", handler: "adminHideRound", auth: "iam" },
 ];

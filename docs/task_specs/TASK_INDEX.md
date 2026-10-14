@@ -20,7 +20,7 @@ Done before these specs (phase 1): booking core, ticket lookup, slots, CDK stack
 - ~~[TASK-010 — Spectator chat tokens with nicknames](backend/010-spectator-chat-tokens.md) · depends on: 009~~ (`cdk diff`/deploy left for the user)
 - ~~[TASK-011 — Votes with live tally](backend/011-votes.md) · depends on: 008, 009~~ (`cdk diff`/deploy left for the user)
 - ~~[TASK-012 — Replay feed and comments](backend/012-replays-and-comments.md) · depends on: 008, 009, 010~~ (`cdk diff`/deploy left for the user)
-- [TASK-013 — Reports and IAM-only admin routes](backend/013-reports-and-admin.md) · depends on: 008, 012
+- ~~[TASK-013 — Reports and IAM-only admin routes](backend/013-reports-and-admin.md) · depends on: 008, 012~~ (`cdk diff`/deploy and signed `GET /admin/reports` check left for the user)
 
 ## Frontend
 

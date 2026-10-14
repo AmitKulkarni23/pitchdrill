@@ -19,10 +19,11 @@ export async function goLive(round: Round, now: number) {
   await announce(round, "round_started", { startedAt });
 }
 
-export async function cancelNoShow(round: Round) {
-  if (!(await transitionRound(round.roundId, "ready", "cancelled", { cancelReason: "no_show" }))) return;
+/** ready -> cancelled: tell the room, then delete the stage and chat room. */
+export async function cancelRound(round: Round, reason: "no_show" | "admin") {
+  if (!(await transitionRound(round.roundId, "ready", "cancelled", { cancelReason: reason }))) return;
   metrics.addMetric("RoundCancelled", MetricUnit.Count, 1);
-  await announce(round, "round_cancelled", { reason: "no_show" });
+  await announce(round, "round_cancelled", { reason });
   await deleteStage(round.stageArn).catch((e) => logger.error("Stage cleanup failed", { roundId: round.roundId, error: (e as Error).message }));
   await deleteRoom(round.chatRoomArn).catch((e) => logger.error("Room cleanup failed", { roundId: round.roundId, error: (e as Error).message }));
 }
@@ -33,7 +34,7 @@ export async function startSlot(slotId: string, now = Date.now()) {
     if (round.status !== "ready") continue;
     try {
       if (await bothPublishing(round)) await goLive(round, now);
-      else await cancelNoShow(round);
+      else await cancelRound(round, "no_show");
     } catch (e) {
       logger.error("Starting round failed", { slotId, roundId: round.roundId, error: (e as Error).message });
     }
