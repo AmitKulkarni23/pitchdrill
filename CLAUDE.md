@@ -103,6 +103,8 @@ cd infra && bunx cdk diff
 cd infra && bunx cdk deploy --all   # deploys to the default AWS profile's account, us-west-2
 ```
 
+Deployed API (stack output `PitchDrillApiUrl`): `https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com`. A failed *first* create strands the retained `pitchdrill-main` table; delete it (deletion protection off first) before redeploying.
+
 ### Vercel
 
 ```bash
