@@ -45,6 +45,7 @@ erDiagram
 | `VOTE#<voterId>` | `vote` (`sold`\|`not_sold`), `createdAt` | `POST /rounds/{id}/votes` (conditional put) |
 | `COMMENT#<createdAt>#<commentId>` | `commentId`, `voterId`, `nickname`, `text`, `createdAt` | `POST /rounds/{id}/comments` |
 | `REPORT#<createdAt>#<reportId>` | `reportId`, `voterId`, `reason`, `createdAt` | `POST /rounds/{id}/reports` |
+| `REPORTER#<voterId>` | — (one report per voter per round, conditional put) | `POST /rounds/{id}/reports` |
 
 `META` attributes:
 
