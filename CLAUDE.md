@@ -30,7 +30,12 @@ Each day has scheduled time slots. People book a slot as a seller or a buyer wit
 
 ```
 pitchdrill/
-├── docs/                     # Product spec, architecture notes, decisions
+├── docs/
+│   ├── mvp.md                # Product decisions and open questions
+│   ├── TASK_SPEC_TEMPLATE.md # Template for new task specs
+│   ├── system_specs/         # architecture.md (block diagrams, API, lifecycle), data_model.md
+│   └── task_specs/           # TASK_INDEX.md + backend/, frontend/, infra/ task specs
+├── PRODUCT.md                # Product context for design work (impeccable)
 ├── frontend/                 # Next.js app (App Router), deployed to Vercel
 │   ├── src/
 │   │   ├── app/              # Pages, layouts
@@ -54,7 +59,7 @@ pitchdrill/
 
 ## Data Model
 
-DynamoDB single table `pitchdrill-main` (key layout in `docs/architecture.md`). Core entities: `slots`, `bookings`, `rounds`, `votes`, `comments`, `reports`. A slot is a scheduled start time. A booking holds a slot, a role (seller/buyer), the booker's public handle and the SHA-256 hash of their ticket — never the raw ticket. A round pairs one seller booking with one buyer booking in a slot and links to its IVS stage, chat room, generated briefs, recording location and vote tallies. Votes are keyed by `roundId + voterId` (one per browser). Comments belong to a round.
+DynamoDB single table `pitchdrill-main` (full layout in `docs/system_specs/data_model.md`). Core entities: `slots`, `bookings`, `rounds`, `votes`, `comments`, `reports`. A slot is a scheduled start time. A booking holds a slot, a role (seller/buyer), the booker's public handle and the SHA-256 hash of their ticket — never the raw ticket. A round pairs one seller booking with one buyer booking in a slot and links to its IVS stage, chat room, generated briefs, recording location and vote tallies. Votes are keyed by `roundId + voterId` (one per browser). Comments belong to a round.
 
 ## Key Behaviors
 
@@ -140,7 +145,7 @@ TBD. Will be documented in `DESIGN.md` once the visual identity is chosen. Recor
 - Briefs are served per side: each brief endpoint requires that side's ticket.
 - AWS access lives in Lambda IAM roles granted with `.grant*()`, never in the frontend. Services without grant methods (IVS) get `addToRolePolicy` scoped to exact actions and resources, with a comment.
 - Admin routes (phase 2) use API Gateway IAM (SigV4) auth.
-- API Gateway HTTP API per-route throttles (all users combined, not per IP — HTTP APIs don't support WAF). Limits in `docs/architecture.md`.
+- API Gateway HTTP API per-route throttles (all users combined, not per IP — HTTP APIs don't support WAF). Limits in `docs/system_specs/architecture.md`.
 - CORS allows only `http://localhost:3000` until the Vercel domain is added.
 
 ## Error Handling
@@ -165,6 +170,14 @@ All AWS infrastructure is managed with AWS CDK in `infra/` — no ClickOps.
 **Do not run any browser automation (playwright-cli or claude-in-chrome) unless the user explicitly asks for it.** Verify changes with type-check, lint, tests and `cdk synth`, and let the user check the UI.
 
 When the user does ask, use the `/playwright-cli` skill (screenshots, clicking, form filling). Never use claude-in-chrome MCP tools.
+
+## Specs and Tasks
+
+- **Architecture**: `docs/system_specs/architecture.md` (block diagrams, AWS components, decisions, round lifecycle, API, flows). **Data model**: `docs/system_specs/data_model.md`. Read both before any backend or infra change and keep them current.
+- **Tasks**: `docs/task_specs/TASK_INDEX.md` lists every task in order. Work on the first task that is not struck through and whose dependencies are done; follow its spec exactly.
+- **When a task is done** (all acceptance criteria met), strike its line through in `docs/task_specs/TASK_INDEX.md` (`~~...~~`) and commit that with the task's last change.
+- New tasks use `docs/TASK_SPEC_TEMPLATE.md` and get a line in the index.
+- Steps marked **asks the user** / **requires user approval** in a spec are hard stops: ask and wait.
 
 ## Git Conventions
 
