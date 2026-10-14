@@ -21,4 +21,6 @@ export const routes: RouteDef[] = [
   { method: "GET", path: "/rounds/{roundId}/brief", handler: "getBrief", auth: "public", throttle: { rateLimit: 20, burstLimit: 40 } },
   { method: "POST", path: "/rounds/{roundId}/join", handler: "joinRound", auth: "public", throttle: { rateLimit: 10, burstLimit: 20 } },
   { method: "POST", path: "/rounds/{roundId}/watch", handler: "watchRound", auth: "public", throttle: { rateLimit: 20, burstLimit: 40 } },
+  { method: "POST", path: "/rounds/{roundId}/chat-token", handler: "createChatToken", auth: "public", throttle: { rateLimit: 20, burstLimit: 40 } },
+  { method: "POST", path: "/rounds/{roundId}/votes", handler: "castVote", auth: "public", throttle: { rateLimit: 20, burstLimit: 40 } },
 ];

@@ -114,6 +114,8 @@ export class PitchDrillBackendStack extends cdk.Stack {
       getBrief: 'read',
       joinRound: 'read',
       watchRound: 'read',
+      createChatToken: 'read',
+      castVote: 'readWrite',
     };
     for (const [handler, { fn }] of Object.entries(fns)) {
       const grant = tableGrants[handler];
@@ -127,12 +129,12 @@ export class PitchDrillBackendStack extends cdk.Stack {
     for (const handler of ['joinRound', 'watchRound']) {
       fns[handler]!.fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['ivs:CreateParticipantToken'], resources: stageArns }));
     }
-    fns.joinRound!.fn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['ivschat:CreateChatToken'],
-        resources: [this.formatArn({ service: 'ivschat', resource: 'room', resourceName: '*' })],
-      }),
-    );
+    const roomArns = [this.formatArn({ service: 'ivschat', resource: 'room', resourceName: '*' })];
+    for (const handler of ['joinRound', 'createChatToken']) {
+      fns[handler]!.fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['ivschat:CreateChatToken'], resources: roomArns }));
+    }
+    // castVote broadcasts the new tally to the round's chat room.
+    fns.castVote!.fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['ivschat:SendEvent'], resources: roomArns }));
 
     // Not an API route: triggered by the table stream for each new round META item.
     const generateBriefs = makeFunction('GenerateBriefs', {
@@ -403,6 +405,13 @@ export class PitchDrillBackendStack extends cdk.Stack {
       fns.joinRound!.logGroup,
       'Booked sellers and buyers cannot get their stage token, so their round cannot start. ' +
         'Check ERROR lines in the PitchDrillJoinRound log group, IVS service health and recent deploys.',
+    );
+    unhandledErrorsAlarm(
+      'PitchDrillUsersCannotVoteAlarm',
+      'pitchdrill-users-cannot-vote',
+      fns.castVote!.logGroup,
+      'Spectators cannot cast Sold / Not sold votes. ' +
+        'Check ERROR lines in the PitchDrillCastVote log group, DynamoDB throttling on pitchdrill-main and recent deploys.',
     );
     new cloudwatch.Alarm(this, 'PitchDrillUsersGettingServerErrorsAlarm', {
       alarmName: 'pitchdrill-users-getting-server-errors',

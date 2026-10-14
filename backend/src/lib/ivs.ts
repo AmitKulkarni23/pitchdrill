@@ -117,8 +117,9 @@ export async function createChatToken(input: {
   userId: string;
   capabilities: ("SEND_MESSAGE" | "DELETE_MESSAGE" | "DISCONNECT_USER")[];
   attributes: Record<string, string>;
+  sessionDurationInMinutes?: number;
 }): Promise<ChatToken> {
-  const out = await rooms.send(new CreateChatTokenCommand({ ...input, sessionDurationInMinutes: 30 }));
+  const out = await rooms.send(new CreateChatTokenCommand({ sessionDurationInMinutes: 30, ...input }));
   if (!out.token) throw new Error("CreateChatToken returned no token");
   return {
     token: out.token,

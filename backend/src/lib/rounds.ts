@@ -117,3 +117,20 @@ export async function watchRound(roundId: string, voterId: string) {
   });
   return { stageToken };
 }
+
+/** Spectator → chat token that can send messages under their nickname. */
+export async function spectatorChatToken(roundId: string, voterId: string, nickname: string) {
+  const meta = await getRoundMeta(roundId);
+  if (!["ready", "live", "ended"].includes(meta.status) || !meta.chatRoomArn)
+    throw new UserError(409, "chat_closed", "Chat isn't open for this round.", { status: meta.status });
+  const lower = nickname.toLowerCase();
+  if (lower === String(meta.sellerHandle).toLowerCase() || lower === String(meta.buyerHandle).toLowerCase())
+    throw new UserError(409, "nickname_taken", "That nickname belongs to a player in this round. Pick another.");
+  return createChatToken({
+    roomIdentifier: meta.chatRoomArn,
+    userId: `viewer-${voterId}`,
+    capabilities: ["SEND_MESSAGE"],
+    attributes: { nickname },
+    sessionDurationInMinutes: 60,
+  });
+}

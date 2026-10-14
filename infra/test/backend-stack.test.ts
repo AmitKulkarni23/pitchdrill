@@ -115,10 +115,12 @@ describe('stack', () => {
         'ivs:StartComposition',
         'ivs:StopComposition',
         'ivs:TagResource',
-        'ivschat:CreateChatToken',
+        'ivschat:CreateChatToken', // joinRound
+        'ivschat:CreateChatToken', // createChatToken
         'ivschat:CreateRoom',
         'ivschat:DeleteRoom',
-        'ivschat:SendEvent',
+        'ivschat:SendEvent', // slotTick
+        'ivschat:SendEvent', // castVote
         'ivschat:TagResource',
       ].sort(),
     );
@@ -143,6 +145,7 @@ describe('stack', () => {
       Environment: { Variables: Match.objectLike({ RECORDINGS_CDN_DOMAIN_ENV: Match.anyValue() }) },
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', { AlarmName: 'pitchdrill-users-cannot-join-rounds' });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', { AlarmName: 'pitchdrill-users-cannot-vote' });
   });
 
   test('SlotTick alarms should exist, named by user impact', () => {

@@ -20,3 +20,13 @@ export function requireVoterId(body: Record<string, unknown>): string {
     throw new UserError(400, "bad_voter", "Missing or invalid voter ID.");
   return body.voterId;
 }
+
+const NICKNAME_RE = /^[A-Za-z0-9 _.-]{2,20}$/;
+
+/** A trimmed nickname: 2-20 letters, numbers, spaces or `_-.`. */
+export function requireNickname(body: Record<string, unknown>): string {
+  const nickname = typeof body.nickname === "string" ? body.nickname.trim() : "";
+  if (!NICKNAME_RE.test(nickname))
+    throw new UserError(400, "bad_nickname", "Nicknames are 2–20 letters, numbers, spaces, dots, dashes or underscores.");
+  return nickname;
+}
