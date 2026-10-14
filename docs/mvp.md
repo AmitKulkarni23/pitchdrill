@@ -2,7 +2,7 @@
 
 ## Decided
 
-- **Identity**: Public handle + private ticket link (no login). *Assumed — confirm.*
+- **Identity**: Public handle + private ticket link (no login).
 - **Matching**: Each slot has 2 seats (Seller, Buyer); first to book each seat gets it.
 - **Audience**: Watch live + replay. Votes and comments on both.
 - **Voting**: Anyone, one vote per browser per round ("Sold" / "Not sold").
