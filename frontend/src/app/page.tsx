@@ -3,6 +3,7 @@ import { LiveNow } from "@/components/LiveNow";
 import { MyBookings } from "@/components/MyBookings";
 import { ExampleRound } from "@/components/broadcast/ExampleRound";
 import { ProgramGuide } from "@/components/broadcast/ProgramGuide";
+import { RecentReplays } from "@/components/RecentReplays";
 import { Rundown } from "@/components/broadcast/Rundown";
 import { TopBar } from "@/components/broadcast/TopBar";
 import { studio, strapType } from "@/config/tokens";
@@ -74,6 +75,8 @@ export default function Home() {
           <ProgramGuide />
         </Box>
       </Box>
+
+      <RecentReplays />
 
       <Box component="footer" sx={{ bgcolor: studio.cobaltNight, borderTop: `2px solid ${studio.cobaltLine}` }}>
         <Box sx={{ ...section, py: 4, display: "flex", justifyContent: "space-between", gap: 2, flexWrap: "wrap", alignItems: "center" }}>

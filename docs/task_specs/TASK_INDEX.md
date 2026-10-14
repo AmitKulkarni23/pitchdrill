@@ -29,7 +29,7 @@ Done before these specs (phase 1): booking core, ticket lookup, slots, CDK stack
 - ~~[TASK-016 — Ticket page and "My bookings"](frontend/016-ticket-page.md) · depends on: 009, 015~~ (visual check against `POST /dev/tick` left for the user; **Enter the arena** shows a placeholder until 017)
 - ~~[TASK-017 — Participant arena (split screen, brief, timer)](frontend/017-participant-arena.md) · depends on: 007, 009, 016~~ (full two-browser round with real IVS left for the user to verify)
 - ~~[TASK-018 — Live rounds, spectator view, chat and voting](frontend/018-spectator-live.md) · depends on: 010, 011, 017~~ (live check with a third browser left for the user; the brief product name after the buzzer is not shown because no public endpoint returns it)
-- [TASK-019 — Replay page, comments, reports and replay feed](frontend/019-replays.md) · depends on: 012, 013, 018
+- ~~[TASK-019 — Replay page, comments, reports and replay feed](frontend/019-replays.md) · depends on: 012, 013, 018~~ (playback in Chrome/Safari, comments and report check left for the user)
 - [TASK-020 — Vercel deployment](frontend/020-vercel-deploy.md) · depends on: 014
 
 ## Go Live
