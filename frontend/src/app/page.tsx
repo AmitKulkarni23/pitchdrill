@@ -1,4 +1,5 @@
 import { Box, Button, Typography } from "@mui/material";
+import { MyBookings } from "@/components/MyBookings";
 import { ExampleRound } from "@/components/broadcast/ExampleRound";
 import { ProgramGuide } from "@/components/broadcast/ProgramGuide";
 import { Rundown } from "@/components/broadcast/Rundown";
@@ -12,6 +13,7 @@ export default function Home() {
     <>
       <TopBar />
       <Box component="main">
+        <MyBookings />
         <Box
           component="section"
           sx={{

@@ -83,3 +83,7 @@ export function waitingLabel(stats: Omit<SlotWithStats, "slotId"> | null): strin
   if (stats.waitingBuyers > 0) return `${plural(stats.waitingBuyers, "buyer")} waiting for a seller`;
   return stats.rounds > 0 ? `${plural(stats.rounds, "round")} booked · open` : "Open";
 }
+
+/** "Today · 4:15 PM" in the visitor's time zone. */
+export const slotWhen = (slotId: string, now: number, timeZone: string): string =>
+  `${dayLabel(localDate(Date.parse(slotId), timeZone), now, timeZone)} · ${timeLabel(slotId, timeZone)}`;

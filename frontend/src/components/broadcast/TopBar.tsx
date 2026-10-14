@@ -4,14 +4,7 @@ import { Box } from "@mui/material";
 import { useNow, useTimeZone } from "@/hooks/useClock";
 import { studio, strapType } from "@/config/tokens";
 import { dayLabel, scheduleSlots, timeLabel } from "@/lib/slots";
-
-const until = (ms: number) => {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = String(s % 60).padStart(2, "0");
-  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
-};
+import { formatCountdown } from "@/lib/time";
 
 /** Channel bug on the left, the next round's start and countdown on the right. */
 export function TopBar() {
@@ -52,7 +45,7 @@ export function TopBar() {
             {dayLabel(new Intl.DateTimeFormat("en-CA", { timeZone }).format(Date.parse(next)), now, timeZone)} {timeLabel(next, timeZone)}
           </Box>
           <Box sx={{ ...strapType, fontSize: "1.125rem", color: studio.signal, minWidth: "4.5ch", textAlign: "right" }}>
-            {until(Date.parse(next) - now)}
+            {formatCountdown(Date.parse(next) - now)}
           </Box>
         </Box>
       )}

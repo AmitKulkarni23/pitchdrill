@@ -26,7 +26,7 @@ Done before these specs (phase 1): booking core, ticket lookup, slots, CDK stack
 
 - ~~[TASK-014 — Scaffold the Next.js frontend](frontend/014-scaffold.md) · depends on: 002~~ (done early in the impeccable design session; the home page replaced the placeholder)
 - ~~[TASK-015 — Schedule and booking flow](frontend/015-schedule-and-booking.md) · depends on: 001, 014~~ (guide already reads `GET /slots` counts; API booking verified against the dev server with curl; visual check and `.ics` import left for the user)
-- [TASK-016 — Ticket page and "My bookings"](frontend/016-ticket-page.md) · depends on: 009, 015
+- ~~[TASK-016 — Ticket page and "My bookings"](frontend/016-ticket-page.md) · depends on: 009, 015~~ (visual check against `POST /dev/tick` left for the user; **Enter the arena** shows a placeholder until 017)
 - [TASK-017 — Participant arena (split screen, brief, timer)](frontend/017-participant-arena.md) · depends on: 007, 009, 016
 - [TASK-018 — Live rounds, spectator view, chat and voting](frontend/018-spectator-live.md) · depends on: 010, 011, 017
 - [TASK-019 — Replay page, comments, reports and replay feed](frontend/019-replays.md) · depends on: 012, 013, 018
