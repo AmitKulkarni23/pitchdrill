@@ -64,7 +64,8 @@ export class PitchDrillBackendStack extends cdk.Stack {
     const createBooking = makeFunction('CreateBooking');
     const getTicket = makeFunction('GetTicket');
 
-    // Least privilege: listSlots touches no AWS resources.
+    // Least privilege: each function gets only the table access it needs.
+    table.grantReadData(listSlots.fn);
     table.grantReadWriteData(createBooking.fn);
     table.grantReadData(getTicket.fn);
 

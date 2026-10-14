@@ -2,8 +2,6 @@
 
 One DynamoDB table, `pitchdrill-main` (on-demand, PITR, deletion-protected, retained). Keys are strings: `PK`, `SK`. One GSI (`GSI1`) for the replay feed. A DynamoDB stream (`NEW_IMAGE`) feeds `GenerateBriefs`.
 
-Phase 1 (deployed) stores the full round under the slot partition. TASK-001 moves it to its own `ROUND#` partition as described here.
-
 ## Entities
 
 ```mermaid

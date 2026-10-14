@@ -1,6 +1,7 @@
 // Runs against DynamoDB Local; skipped unless DYNAMODB_ENDPOINT is set (see CLAUDE.md).
 import { beforeAll, describe, expect, test } from "bun:test";
 import { CreateTableCommand, DeleteTableCommand } from "@aws-sdk/client-dynamodb";
+import { GetCommand } from "@aws-sdk/lib-dynamodb";
 import { db, TABLE } from "../src/lib/db";
 import { createBooking, getBookingByTicket } from "../src/lib/bookings";
 import { slotsForDate } from "../src/lib/slots";
@@ -60,5 +61,52 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("bookings", () => {
     expect(book(slots[4]!, "a b", "seller")).rejects.toMatchObject({ code: "bad_handle" });
     expect(book(slots[4]!, "amit", "judge")).rejects.toMatchObject({ code: "bad_role" });
     expect(getBookingByTicket("nope")).rejects.toMatchObject({ code: "bad_ticket" });
+  });
+  const item = async (PK: string, SK: string) => (await db.send(new GetCommand({ TableName: TABLE, Key: { PK, SK } }))).Item;
+
+  test("pairing writes ROUND#/META with status paired and zero votes", async () => {
+    const s = slots[5]!;
+    const seller = await book(s, "meta_s", "seller");
+    const buyer = await book(s, "meta_b", "buyer");
+    const roundId = buyer.booking.roundId!;
+    expect(await item(`ROUND#${roundId}`, "META")).toEqual({
+      PK: `ROUND#${roundId}`,
+      SK: "META",
+      roundId,
+      slotId: s,
+      sellerBookingId: seller.booking.bookingId,
+      sellerHandle: "meta_s",
+      buyerBookingId: buyer.booking.bookingId,
+      buyerHandle: "meta_b",
+      status: "paired",
+      votesSold: 0,
+      votesNotSold: 0,
+    });
+  });
+
+  test("pairing writes a SLOT#/ROUND# index item with only the roundId", async () => {
+    const s = slots[6]!;
+    await book(s, "idx_s", "seller");
+    const buyer = await book(s, "idx_b", "buyer");
+    const roundId = buyer.booking.roundId!;
+    expect(await item(`SLOT#${s}`, `ROUND#${roundId}`)).toEqual({ PK: `SLOT#${s}`, SK: `ROUND#${roundId}`, roundId });
+  });
+
+  test("booking status is waiting, then paired for both sides", async () => {
+    const s = slots[7]!;
+    const seller = await book(s, "st_s", "seller");
+    expect((await getBookingByTicket(seller.ticket)).status).toBe("waiting");
+    const buyer = await book(s, "st_b", "buyer");
+    expect(buyer.booking.status).toBe("paired");
+    expect((await getBookingByTicket(seller.ticket)).status).toBe("paired");
+    expect((await getBookingByTicket(buyer.ticket)).status).toBe("paired");
+  });
+
+  test("STATS counts stay in sync", async () => {
+    const s = slots[8]!;
+    for (const [h, r] of [["cnt_1", "seller"], ["cnt_2", "seller"], ["cnt_3", "seller"], ["cnt_4", "buyer"], ["cnt_5", "buyer"]] as const) await book(s, h, r);
+    const stats = await item(`SLOT#${s}`, "STATS");
+    expect(stats).toMatchObject({ waitingSellers: 1, rounds: 2 });
+    expect(stats?.waitingBuyers ?? 0).toBe(0); // counter only exists once a buyer has waited
   });
 });

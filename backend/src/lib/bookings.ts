@@ -3,6 +3,7 @@ import { GetCommand, QueryCommand, TransactWriteCommand } from "@aws-sdk/lib-dyn
 import { TransactionCanceledException } from "@aws-sdk/client-dynamodb";
 import { db, TABLE } from "./db";
 import { isBookable, isValidSlot } from "./slots";
+import { roundPk, slotPk, STATS_SK } from "./keys";
 import { hashTicket, newTicket } from "./tickets";
 import { UserError } from "./http";
 import { metrics } from "./observability";
@@ -11,6 +12,7 @@ import { MetricUnit } from "@aws-lambda-powertools/metrics";
 export type Role = "seller" | "buyer";
 const HANDLE_RE = /^[A-Za-z0-9_]{3,20}$/;
 const MAX_ATTEMPTS = 5;
+const waitingAttr = (role: Role) => (role === "seller" ? "waitingSellers" : "waitingBuyers");
 
 export interface Booking {
   slotId: string;
@@ -18,6 +20,7 @@ export interface Booking {
   handle: string;
   role: Role;
   createdAt: string;
+  status: "waiting" | "paired";
   roundId?: string;
   opponentHandle?: string;
 }
@@ -35,10 +38,10 @@ export async function createBooking(input: { slotId: unknown; handle: unknown; r
     throw new UserError(400, "bad_handle", "Handles are 3–20 letters, numbers or underscores.");
   if (role !== "seller" && role !== "buyer") throw new UserError(400, "bad_role", "Role must be seller or buyer.");
 
-  const pk = `SLOT#${slotId}`;
+  const pk = slotPk(slotId);
   const other: Role = role === "seller" ? "buyer" : "seller";
   const ticket = newTicket();
-  const booking: Booking = { slotId, bookingId: randomUUID(), handle, role, createdAt: new Date(now).toISOString() };
+  const booking: Booking = { slotId, bookingId: randomUUID(), handle, role, createdAt: new Date(now).toISOString(), status: "waiting" };
 
   // ponytail: a seller and buyer booking at the same instant can both see an empty queue and both wait.
   // Fix with a sweep at slot time that pairs leftover waiters if it shows up in practice.
@@ -53,7 +56,7 @@ export async function createBooking(input: { slotId: unknown; handle: unknown; r
     );
     const waiting = Items?.[0];
     const roundId = waiting ? randomUUID() : undefined;
-    const mine: Booking = waiting ? { ...booking, roundId, opponentHandle: waiting.handle } : booking;
+    const mine: Booking = waiting ? { ...booking, status: "paired", roundId, opponentHandle: waiting.handle } : booking;
 
     const writes: NonNullable<ConstructorParameters<typeof TransactWriteCommand>[0]["TransactItems"]> = [
       {
@@ -74,32 +77,56 @@ export async function createBooking(input: { slotId: unknown; handle: unknown; r
           Update: {
             TableName: TABLE,
             Key: { PK: pk, SK: `BOOKING#${waiting.bookingId}` },
-            UpdateExpression: "SET roundId = :r, opponentHandle = :h",
-            ExpressionAttributeValues: { ":r": roundId, ":h": handle },
+            UpdateExpression: "SET roundId = :r, opponentHandle = :h, #s = :paired",
+            ExpressionAttributeNames: { "#s": "status" },
+            ExpressionAttributeValues: { ":r": roundId, ":h": handle, ":paired": "paired" },
           },
         },
         {
           Put: {
             TableName: TABLE,
             Item: {
-              PK: pk,
-              SK: `ROUND#${roundId}`,
+              PK: roundPk(roundId!),
+              SK: "META",
               roundId,
+              slotId,
               sellerBookingId: seller.bookingId,
               sellerHandle: seller.handle,
               buyerBookingId: buyer.bookingId,
               buyerHandle: buyer.handle,
+              status: "paired",
+              votesSold: 0,
+              votesNotSold: 0,
             },
+          },
+        },
+        { Put: { TableName: TABLE, Item: { PK: pk, SK: `ROUND#${roundId}`, roundId } } },
+        {
+          Update: {
+            TableName: TABLE,
+            Key: { PK: pk, SK: STATS_SK },
+            UpdateExpression: `ADD ${waitingAttr(other)} :dec, rounds :one`,
+            ExpressionAttributeValues: { ":dec": -1, ":one": 1 },
           },
         },
       );
     } else {
-      writes.push({
-        Put: {
-          TableName: TABLE,
-          Item: { PK: pk, SK: `WAIT#${role}#${booking.createdAt}#${booking.bookingId}`, bookingId: booking.bookingId, handle },
+      writes.push(
+        {
+          Update: {
+            TableName: TABLE,
+            Key: { PK: pk, SK: STATS_SK },
+            UpdateExpression: `ADD ${waitingAttr(role)} :one`,
+            ExpressionAttributeValues: { ":one": 1 },
+          },
         },
-      });
+        {
+          Put: {
+            TableName: TABLE,
+            Item: { PK: pk, SK: `WAIT#${role}#${booking.createdAt}#${booking.bookingId}`, bookingId: booking.bookingId, handle },
+          },
+        },
+      );
     }
 
     try {
@@ -123,7 +150,7 @@ export async function getBookingByTicket(ticket: unknown): Promise<Booking> {
   if (typeof ticket !== "string" || !ticket) throw new UserError(401, "no_ticket", "Missing ticket.");
   const { Item: t } = await db.send(new GetCommand({ TableName: TABLE, Key: { PK: `TICKET#${hashTicket(ticket)}`, SK: "TICKET" } }));
   if (!t) throw new UserError(404, "bad_ticket", "That ticket isn't valid.");
-  const { Item } = await db.send(new GetCommand({ TableName: TABLE, Key: { PK: `SLOT#${t.slotId}`, SK: `BOOKING#${t.bookingId}` } }));
+  const { Item } = await db.send(new GetCommand({ TableName: TABLE, Key: { PK: slotPk(t.slotId), SK: `BOOKING#${t.bookingId}` } }));
   if (!Item) throw new UserError(404, "bad_ticket", "That ticket isn't valid.");
   const { PK, SK, ...booking } = Item;
   return booking as Booking;
