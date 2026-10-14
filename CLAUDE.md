@@ -61,7 +61,7 @@ DynamoDB. Core entities: `slots`, `bookings`, `rounds`, `votes`, `comments`, `re
 - A slot holds any number of rounds. Pairing is first-come-first-serve at booking: a new booking is paired with the oldest unpaired booking of the opposite role in that slot, creating a round. Pairing uses a conditional write so one booking is never paired twice.
 - Unpaired bookings wait; if still unpaired at slot time they are told no opponent was found.
 - All rounds in a slot start together; the arena page lists live rounds for spectators to pick from.
-- Briefs are generated via Bedrock when both seats fill and revealed to each side ~30s before the round. The buyer's persona is never shown to the seller.
+- Briefs are generated via Bedrock when a round is paired and revealed to each side ~30s before the round. The buyer's persona is never shown to the seller.
 - Rounds are 60 seconds, enforced server-side. Spectators watch live and vote "Sold" / "Not sold" at the buzzer.
 - Recordings are kept for replay; votes and comments stay open on replays.
 - Voters are identified by a random voter ID in localStorage: one vote per browser per round, rate-limited.
@@ -120,7 +120,7 @@ TBD. Will be documented in `DESIGN.md` once the visual identity is chosen. Recor
 
 - Raw tickets are returned once at booking and never stored; DynamoDB keeps only their SHA-256 hash. Compare hashes in constant time.
 - IVS publish tokens are minted only for the seller/buyer holding a valid ticket for that round. Spectators get subscribe-only tokens.
-- Briefs are served per seat: each brief endpoint requires that side's ticket.
+- Briefs are served per side: each brief endpoint requires that side's ticket.
 - All AWS credentials and Bedrock access live in Lambda IAM roles, never in the frontend.
 - API Gateway throttling plus per-voter/per-IP limits on booking, voting and comments.
 - CORS allows only the Vercel domains.
