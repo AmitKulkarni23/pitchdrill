@@ -11,6 +11,13 @@
 - **Voting**: Anyone, one vote per browser per round ("Sold" / "Not sold").
 - **Briefs**: LLM-generated. Seller gets a product sheet; buyer gets a hidden persona. Revealed ~30s before the round.
 - **Round length**: 60 seconds, enforced server-side.
+- **Coming back**: no email. After booking: copy the ticket link or "Add to calendar" (`.ics` with the link and a 15-minute reminder).
+- **Spectator names**: a nickname typed once (saved in the browser) for chat and comments.
+- **No-shows**: if both sides aren't publishing at start, the round is cancelled.
+- **Vote tally**: always visible, live.
+- **Moderation**: public report button; IAM-only admin routes (list reports, end a round, hide a replay); no admin UI.
+- **Recording**: one split-screen recording per round (IVS server-side composition), replayed via CloudFront.
+- **Briefs**: random product generated via OpenRouter when a round is paired; fallback list if it fails.
 
 ## Functional Requirements
 
@@ -31,8 +38,5 @@
 ## Open Questions
 
 - Is there a cap on rounds per slot (IVS cost)?
-- What happens when someone no-shows (opponent waits alone)?
-- Can one handle book both roles, or more than one slot per day?
-- Is the vote visible live, or revealed at the buzzer?
-- Product categories for briefs: random, or picked by the seller?
+- Can one handle book more than one slot per day?
 - Minimum age / content rules for live video?
