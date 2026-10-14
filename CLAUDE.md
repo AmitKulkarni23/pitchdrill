@@ -85,6 +85,8 @@ cd frontend && bun install
 cd frontend && bun run dev
 cd frontend && bun run build
 cd frontend && bun run lint
+cd frontend && bun run typecheck
+cd frontend && bun run test      # bun test on src/lib
 ```
 
 ### Backend
@@ -120,15 +122,21 @@ curl --aws-sigv4 "aws:amz:us-west-2:execute-api" --user "$AWS_ACCESS_KEY_ID:$AWS
 
 ### Vercel
 
+Project `pitchdrill` (scope `amits-projects-684cec17`), root directory `frontend`, Bun install/build, `NEXT_PUBLIC_API_URL` set for production + preview. Deployment protection is Vercel Authentication on all deployments except custom domains (there are none), so nothing is public. Git auto-deploy is pending TASK-020 (the Vercel GitHub app needs access to the repo). `pitchdrill.vercel.app` is an unrelated site, not ours.
+
 ```bash
-vercel            # preview
-vercel --prod     # production
-vercel env pull .env.local
+vercel deploy                              # protected preview from the repo root
+vercel ls pitchdrill                       # deployments
+vercel project protection pitchdrill --json
 ```
 
 ## Design System
 
-TBD. Will be documented in `DESIGN.md` once the visual identity is chosen. Record tokens, shared styles, theme and fonts here when they exist.
+The visual system is the **shopping-channel broadcast** world documented in `DESIGN.md` (tokens, components, rules) with product context in `PRODUCT.md`; surface strategy lives in `.impeccable/surfaces/`. Design work goes through the impeccable skill.
+
+- **Tokens**: `frontend/src/config/tokens.ts` (plain module, safe for server components). Never import tokens from `theme.ts` (a `"use client"` module) in server components: the values arrive as empty client references.
+- **MUI theme**: `frontend/src/config/theme.ts`; components use MUI with `sx` props, no CSS Modules, no Tailwind.
+- **Broadcast components**: `frontend/src/components/broadcast/` (Strap, OnAirClock, ExampleRound, Rundown, ProgramGuide, BookingDesk, TopBar).
 
 ## Architecture
 
