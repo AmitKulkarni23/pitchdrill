@@ -42,6 +42,7 @@ export class PitchDrillBackendStack extends cdk.Stack {
       const logGroup = new logs.LogGroup(this, `PitchDrill${name}Logs`, {
         logGroupName: `/aws/lambda/PitchDrill${name}`,
         retention: logs.RetentionDays.ONE_MONTH,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
       });
       const fn = new lambda.Function(this, `PitchDrill${name}`, {
         functionName: `PitchDrill${name}`,
@@ -102,6 +103,7 @@ export class PitchDrillBackendStack extends cdk.Stack {
     const accessLogs = new logs.LogGroup(this, 'PitchDrillApiAccessLogs', {
       logGroupName: '/aws/apigateway/pitchdrill-api',
       retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     // Throttles cap all users combined (HTTP APIs have no per-IP limits). Default applies to any route not listed.
