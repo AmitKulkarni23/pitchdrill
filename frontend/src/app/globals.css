@@ -1,0 +1,45 @@
+/* Browser surfaces carry the broadcast palette too (values mirror src/config/theme.ts). */
+:root {
+  color-scheme: dark;
+  accent-color: #ffd60a;
+  scrollbar-color: #3a4fe0 #0d1873;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #1b2fc4;
+  caret-color: #ffd60a;
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: #ffd60a;
+  color: #0a1050;
+}
+
+:focus-visible {
+  outline: 3px solid #ffd60a;
+  outline-offset: 3px;
+}
+
+a {
+  color: inherit;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
