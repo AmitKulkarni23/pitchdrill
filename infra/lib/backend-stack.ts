@@ -5,16 +5,24 @@ import * as apigw from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpIamAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { AccessLogFormat } from 'aws-cdk-lib/aws-apigateway';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as ivs from 'aws-cdk-lib/aws-ivs';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import { routes } from '../../backend/src/routes';
 
 // Browser origins allowed to call the API. Add the Vercel domain once the frontend is deployed.
 const ALLOWED_ORIGINS = ['http://localhost:3000'];
 
 export class PitchDrillBackendStack extends cdk.Stack {
+  /** Used by SlotTick to start compositions (TASK-007). */
+  readonly encoderConfiguration: ivs.CfnEncoderConfiguration;
+  readonly storageConfiguration: ivs.CfnStorageConfiguration;
+
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -79,6 +87,50 @@ export class PitchDrillBackendStack extends cdk.Stack {
       else if (grant === 'read') table.grantReadData(fn);
       else throw new Error(`No table grant declared for handler "${handler}"`);
     }
+
+    // ======================
+    // 2b. MEDIA LAYER
+    // ======================
+
+    // Recordings: IVS server-side composition writes HLS here; CloudFront (OAC) is the only reader.
+    const recordingsBucket = new s3.Bucket(this, 'PitchDrillRecordingsBucket', {
+      bucketName: `pitchdrill-recordings-${this.account}`,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // hls.js fetches playlists and segments cross-origin from the frontend.
+    const recordingsCors = new cloudfront.ResponseHeadersPolicy(this, 'PitchDrillRecordingsCors', {
+      corsBehavior: {
+        accessControlAllowOrigins: ALLOWED_ORIGINS,
+        accessControlAllowMethods: ['GET', 'HEAD'],
+        accessControlAllowHeaders: ['*'],
+        accessControlAllowCredentials: false,
+        originOverride: true,
+      },
+    });
+    const recordingsCdn = new cloudfront.Distribution(this, 'PitchDrillRecordingsCdn', {
+      defaultBehavior: {
+        origin: origins.S3BucketOrigin.withOriginAccessControl(recordingsBucket),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+        responseHeadersPolicy: recordingsCors,
+      },
+    });
+
+    this.encoderConfiguration = new ivs.CfnEncoderConfiguration(this, 'PitchDrillCompositeEncoder', {
+      name: 'pitchdrill-composite',
+      video: { width: 1280, height: 720, framerate: 30, bitrate: 2_500_000 },
+    });
+    this.storageConfiguration = new ivs.CfnStorageConfiguration(this, 'PitchDrillRecordingsStorage', {
+      name: 'pitchdrill-recordings',
+      s3: { bucketName: recordingsBucket.bucketName },
+    });
+    // No bucket policy for IVS: composition output is written through the IVS service-linked role,
+    // which IVS creates on first use. ponytail: confirm against the IVS real-time composition S3 docs
+    // when deploying; if writes are denied, add a bucket resource policy here (bucket.addToResourcePolicy).
 
     // ======================
     // 3. API LAYER
@@ -218,6 +270,12 @@ export class PitchDrillBackendStack extends cdk.Stack {
       value: api.apiEndpoint,
       exportName: 'PitchDrillApiUrl',
       description: 'Base URL for the frontend (NEXT_PUBLIC_API_URL)',
+    });
+
+    new cdk.CfnOutput(this, 'PitchDrillRecordingsCdnDomainOutput', {
+      value: recordingsCdn.distributionDomainName,
+      exportName: 'PitchDrillRecordingsCdnDomain',
+      description: 'CloudFront domain serving replay recordings',
     });
   }
 }

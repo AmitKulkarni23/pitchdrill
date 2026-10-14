@@ -107,6 +107,7 @@ cd backend && bun run test:local
 
 ```bash
 cd infra && bun install
+cd infra && bun test                # CDK assertion tests
 cd infra && bunx cdk synth
 cd infra && bunx cdk diff
 cd infra && bunx cdk deploy --all   # deploys to the default AWS profile's account, us-west-2
