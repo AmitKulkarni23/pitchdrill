@@ -78,7 +78,7 @@ Read and follow these before writing ANY code:
 
 - [ ] All RED tests written and failing for the right reason
 - [ ] All tests GREEN; typecheck clean
-- [ ] Deployed; a manual invoke with a sample stream event (signed `aws lambda invoke`) stores briefs on a test round in a dev-only test slot, then the test items are deleted
+- [ ] Deployed; the stream event source mapping is `Enabled` (`aws lambda list-event-source-mappings --function-name PitchDrillGenerateBriefs --region us-west-2`). No test data is written to the production table; end-to-end is verified in TASK-021
 - [ ] Key never appears in logs
 
 ## Spec Updates
