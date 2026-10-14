@@ -58,6 +58,8 @@ DynamoDB. Core entities: `slots`, `bookings`, `rounds`, `votes`, `comments`, `re
 ## Key Behaviors
 
 - No accounts. Identity is a public handle plus a private ticket (random token) returned once at booking, shown as a link and saved in localStorage.
+- Slots run every 15 minutes, 4:00–8:45 PM `America/Los_Angeles` (20 per day). Slot IDs are UTC ISO start times; the frontend shows local time.
+- A handle can book a slot once (either role).
 - A slot holds any number of rounds. Pairing is first-come-first-serve at booking: a new booking is paired with the oldest unpaired booking of the opposite role in that slot, creating a round. Pairing uses a conditional write so one booking is never paired twice.
 - Unpaired bookings wait; if still unpaired at slot time they are told no opponent was found.
 - All rounds in a slot start together; the arena page lists live rounds for spectators to pick from.

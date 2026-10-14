@@ -4,6 +4,8 @@
 
 - **Identity**: Public handle + private ticket link (no login).
 - **Slots & matching**: Many people can book the same slot as seller or buyer. Pairing is first-come-first-serve at booking (new booking ↔ oldest unpaired opposite role), so both see their opponent on the ticket.
+- **Slot grid**: Every 15 minutes, 4:00 PM – 8:45 PM Pacific (`America/Los_Angeles`, follows PST/PDT) — 20 slots/day. Stored as UTC, shown in the viewer's local time.
+- **Handles**: Unique per slot (one booking per handle per slot, either role).
 - **Rounds**: All rounds in a slot run in parallel, one stage each; spectators pick which to watch.
 - **Audience**: Watch live + replay. Votes and comments on both.
 - **Voting**: Anyone, one vote per browser per round ("Sold" / "Not sold").
@@ -28,10 +30,9 @@
 
 ## Open Questions
 
-- Slot grid: how often (e.g. every 30 min), what hours, which time zone?
 - Is there a cap on rounds per slot (IVS cost)?
 - What happens when someone no-shows (opponent waits alone)?
-- Can one handle book both roles, or more than one slot per day? (Handles unique per slot or global?)
+- Can one handle book both roles, or more than one slot per day?
 - Is the vote visible live, or revealed at the buzzer?
 - Product categories for briefs: random, or picked by the seller?
 - Minimum age / content rules for live video?
