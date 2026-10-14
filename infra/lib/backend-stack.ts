@@ -220,6 +220,16 @@ export class PitchDrillBackendStack extends cdk.Stack {
         resources: [this.storageConfiguration.attrArn, this.encoderConfiguration.attrArn],
       }),
     );
+    // SlotTick looks for finished recordings in the bucket and stops compositions at the buzzer.
+    recordingsBucket.grantRead(slotTick.fn);
+    slotTick.fn.addEnvironment('RECORDINGS_BUCKET_ENV', recordingsBucket.bucketName);
+    slotTick.fn.addToRolePolicy(
+      // IVS has no CDK grant methods.
+      new iam.PolicyStatement({
+        actions: ['ivs:StopComposition'],
+        resources: [this.formatArn({ service: 'ivs', resource: 'composition', resourceName: '*' })],
+      }),
+    );
     // No bucket policy for IVS: composition output is written through the IVS service-linked role,
     // which IVS creates on first use. ponytail: confirm against the IVS real-time composition S3 docs
     // when deploying; if writes are denied, add a bucket resource policy here (bucket.addToResourcePolicy).

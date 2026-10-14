@@ -2,11 +2,13 @@ import {
   CreateStageCommand,
   DeleteStageCommand,
   GetStageCommand,
+  ResourceNotFoundException,
+  StopCompositionCommand,
   IVSRealTimeClient,
   ListParticipantsCommand,
   StartCompositionCommand,
 } from "@aws-sdk/client-ivs-realtime";
-import { CreateRoomCommand, DeleteRoomCommand, IvschatClient } from "@aws-sdk/client-ivschat";
+import { CreateRoomCommand, DeleteRoomCommand, IvschatClient, ResourceNotFoundException as ChatNotFound } from "@aws-sdk/client-ivschat";
 import { tracer } from "./observability";
 
 const stages = tracer.captureAWSv3Client(new IVSRealTimeClient({}));
@@ -19,8 +21,11 @@ export async function createStage(roundId: string): Promise<string> {
   return stage.arn;
 }
 
+/** Deleting a stage that is already gone counts as success. */
 export async function deleteStage(arn: string): Promise<void> {
-  await stages.send(new DeleteStageCommand({ arn }));
+  await stages.send(new DeleteStageCommand({ arn })).catch((e) => {
+    if (!(e instanceof ResourceNotFoundException)) throw e;
+  });
 }
 
 /** Creates the IVS Chat room for a round and returns its ARN. */
@@ -30,8 +35,18 @@ export async function createRoom(roundId: string): Promise<string> {
   return arn;
 }
 
+/** Deleting a room that is already gone counts as success. */
 export async function deleteRoom(arn: string): Promise<void> {
-  await rooms.send(new DeleteRoomCommand({ identifier: arn }));
+  await rooms.send(new DeleteRoomCommand({ identifier: arn })).catch((e) => {
+    if (!(e instanceof ChatNotFound)) throw e;
+  });
+}
+
+/** Stops a composition; already stopped or deleted counts as success. */
+export async function stopComposition(arn: string): Promise<void> {
+  await stages.send(new StopCompositionCommand({ arn })).catch((e) => {
+    if (!(e instanceof ResourceNotFoundException)) throw e;
+  });
 }
 
 /** The stage's current session ID, or undefined when nobody has joined. */

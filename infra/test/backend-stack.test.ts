@@ -110,6 +110,7 @@ describe('stack', () => {
       'ivs:ListParticipants',
       'ivs:StartComposition',
       'ivs:StartComposition',
+      'ivs:StopComposition',
       'ivs:TagResource',
       'ivschat:CreateRoom',
       'ivschat:DeleteRoom',
@@ -125,6 +126,7 @@ describe('stack', () => {
         Variables: Match.objectLike({
           STORAGE_CONFIGURATION_ARN_ENV: Match.anyValue(),
           ENCODER_CONFIGURATION_ARN_ENV: Match.anyValue(),
+          RECORDINGS_BUCKET_ENV: Match.anyValue(),
         }),
       },
     });

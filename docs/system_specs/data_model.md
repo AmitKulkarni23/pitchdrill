@@ -57,7 +57,8 @@ erDiagram
 | `startedAt?`, `endedAt?` | ISO string | |
 | `briefs?` | map `{ product: { name, price, tagline }, seller: string, buyer: string, source: "openrouter"\|"fallback" }` | set by `GenerateBriefs` / `SlotTick`; never returned whole to clients |
 | `votesSold`, `votesNotSold` | number | `ADD` on each vote |
-| `recordingPath?` | string | S3 key of the HLS multivariant playlist |
+| `recordingPath?` | string | S3 key of the HLS multivariant playlist. **Layout unconfirmed**: `lib/recordings.ts` tries `<stageId>/<compositionId>/` then `<compositionId>/` and takes the first `multivariant.m3u8`; verify on the first real recording |
+| `recordingMissingAt?`, `endedBy?` | ISO string, `"admin"` | set once when no recording appears by T+20m; set when an admin ends the round |
 | `hidden?` | boolean | admin hide |
 | `GSI1PK?`, `GSI1SK?` | `"REPLAY"`, `endedAt` | present only when the replay is listable (recording ready, not hidden) |
 
