@@ -39,7 +39,8 @@ pitchdrill/
 ├── frontend/                 # Next.js app (App Router), deployed to Vercel
 │   ├── src/
 │   │   ├── app/              # Pages, layouts
-│   │   ├── components/       # Reusable React components
+│   │   ├── components/       # Reusable React components (broadcast/, arena/)
+│   │   ├── hooks/            # useNow, usePolling, useStage, useRoundEvents
 │   │   ├── config/           # API base URL, environment config
 │   │   ├── types/            # TypeScript type definitions
 │   │   └── lib/              # Utility functions, API client, ticket storage
