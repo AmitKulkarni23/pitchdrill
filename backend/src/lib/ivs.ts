@@ -1,4 +1,5 @@
 import {
+  CreateParticipantTokenCommand,
   CreateStageCommand,
   DeleteStageCommand,
   GetStageCommand,
@@ -8,7 +9,7 @@ import {
   ListParticipantsCommand,
   StartCompositionCommand,
 } from "@aws-sdk/client-ivs-realtime";
-import { CreateRoomCommand, DeleteRoomCommand, IvschatClient, ResourceNotFoundException as ChatNotFound } from "@aws-sdk/client-ivschat";
+import { CreateChatTokenCommand, CreateRoomCommand, DeleteRoomCommand, IvschatClient, ResourceNotFoundException as ChatNotFound } from "@aws-sdk/client-ivschat";
 import { tracer } from "./observability";
 
 const stages = tracer.captureAWSv3Client(new IVSRealTimeClient({}));
@@ -90,4 +91,38 @@ export async function startComposition(stageArn: string): Promise<string> {
   );
   if (!composition?.arn) throw new Error("StartComposition returned no ARN");
   return composition.arn;
+}
+
+/** Mints a stage token. `duration` is in minutes. */
+export async function createStageToken(input: {
+  stageArn: string;
+  userId: string;
+  attributes: Record<string, string>;
+  capabilities: ("PUBLISH" | "SUBSCRIBE")[];
+}): Promise<string> {
+  const { participantToken } = await stages.send(new CreateParticipantTokenCommand({ ...input, duration: 30 }));
+  if (!participantToken?.token) throw new Error("CreateParticipantToken returned no token");
+  return participantToken.token;
+}
+
+export interface ChatToken {
+  token: string;
+  sessionExpirationTime: string;
+  tokenExpirationTime: string;
+}
+
+/** Mints an IVS Chat token. Participants get no capabilities (receive only). */
+export async function createChatToken(input: {
+  roomIdentifier: string;
+  userId: string;
+  capabilities: ("SEND_MESSAGE" | "DELETE_MESSAGE" | "DISCONNECT_USER")[];
+  attributes: Record<string, string>;
+}): Promise<ChatToken> {
+  const out = await rooms.send(new CreateChatTokenCommand({ ...input, sessionDurationInMinutes: 30 }));
+  if (!out.token) throw new Error("CreateChatToken returned no token");
+  return {
+    token: out.token,
+    sessionExpirationTime: out.sessionExpirationTime!.toISOString(),
+    tokenExpirationTime: out.tokenExpirationTime!.toISOString(),
+  };
 }

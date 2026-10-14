@@ -109,6 +109,11 @@ export class PitchDrillBackendStack extends cdk.Stack {
       listSlots: 'read',
       createBooking: 'readWrite',
       getTicket: 'read',
+      listLiveRounds: 'read',
+      getRound: 'read',
+      getBrief: 'read',
+      joinRound: 'read',
+      watchRound: 'read',
     };
     for (const [handler, { fn }] of Object.entries(fns)) {
       const grant = tableGrants[handler];
@@ -116,6 +121,18 @@ export class PitchDrillBackendStack extends cdk.Stack {
       else if (grant === 'read') table.grantReadData(fn);
       else throw new Error(`No table grant declared for handler "${handler}"`);
     }
+
+    // IVS has no CDK grant methods: token minting only, on exact resource types.
+    const stageArns = [this.formatArn({ service: 'ivs', resource: 'stage', resourceName: '*' })];
+    for (const handler of ['joinRound', 'watchRound']) {
+      fns[handler]!.fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['ivs:CreateParticipantToken'], resources: stageArns }));
+    }
+    fns.joinRound!.fn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ivschat:CreateChatToken'],
+        resources: [this.formatArn({ service: 'ivschat', resource: 'room', resourceName: '*' })],
+      }),
+    );
 
     // Not an API route: triggered by the table stream for each new round META item.
     const generateBriefs = makeFunction('GenerateBriefs', {
@@ -201,6 +218,10 @@ export class PitchDrillBackendStack extends cdk.Stack {
         responseHeadersPolicy: recordingsCors,
       },
     });
+
+    for (const handler of ['getRound', 'listLiveRounds']) {
+      fns[handler]!.fn.addEnvironment('RECORDINGS_CDN_DOMAIN_ENV', recordingsCdn.distributionDomainName);
+    }
 
     this.encoderConfiguration = new ivs.CfnEncoderConfiguration(this, 'PitchDrillCompositeEncoder', {
       name: 'pitchdrill-composite',
@@ -376,6 +397,13 @@ export class PitchDrillBackendStack extends cdk.Stack {
       comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
+    unhandledErrorsAlarm(
+      'PitchDrillUsersCannotJoinRoundsAlarm',
+      'pitchdrill-users-cannot-join-rounds',
+      fns.joinRound!.logGroup,
+      'Booked sellers and buyers cannot get their stage token, so their round cannot start. ' +
+        'Check ERROR lines in the PitchDrillJoinRound log group, IVS service health and recent deploys.',
+    );
     new cloudwatch.Alarm(this, 'PitchDrillUsersGettingServerErrorsAlarm', {
       alarmName: 'pitchdrill-users-getting-server-errors',
       alarmDescription:

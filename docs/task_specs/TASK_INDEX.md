@@ -16,7 +16,7 @@ Done before these specs (phase 1): booking core, ticket lookup, slots, CDK stack
 - ~~[TASK-006 — SlotTick: open slots (T-5 minutes)](backend/006-slot-tick-open.md) · depends on: 001, 002, 005~~ (deploy and schedule check left for the user)
 - ~~[TASK-007 — SlotTick: start rounds or cancel no-shows (T)](backend/007-slot-tick-start.md) · depends on: 003, 006~~ (`cdk diff`/deploy left for the user)
 - ~~[TASK-008 — SlotTick: buzzer, cleanup and replay registration](backend/008-slot-tick-end-and-recordings.md) · depends on: 007~~ (deploy and confirming the S3 key layout on a real recording left for the user)
-- [TASK-009 — Round details, briefs, join and watch tokens](backend/009-round-read-join-watch.md) · depends on: 002, 006
+- ~~[TASK-009 — Round details, briefs, join and watch tokens](backend/009-round-read-join-watch.md) · depends on: 002, 006~~ (`cdk diff`/deploy and signed `GET /rounds/live` check left for the user)
 - [TASK-010 — Spectator chat tokens with nicknames](backend/010-spectator-chat-tokens.md) · depends on: 009
 - [TASK-011 — Votes with live tally](backend/011-votes.md) · depends on: 008, 009
 - [TASK-012 — Replay feed and comments](backend/012-replays-and-comments.md) · depends on: 008, 009, 010

@@ -96,27 +96,32 @@ describe('stack', () => {
     });
   });
 
-  test('SlotTick IVS permissions should be limited to stage and room actions', () => {
+  test('IVS permissions should be limited to the exact stage, room and composition actions in use', () => {
     const policies = template.findResources('AWS::IAM::Policy');
     const statements = Object.values(policies).flatMap((p: any) => p.Properties.PolicyDocument.Statement);
     const ivsActions = statements
       .flatMap((st: any) => (Array.isArray(st.Action) ? st.Action : [st.Action]))
       .filter((a: string) => a.startsWith('ivs'))
       .sort();
-    expect(ivsActions).toEqual([
-      'ivs:CreateStage',
-      'ivs:DeleteStage',
-      'ivs:GetStage',
-      'ivs:ListParticipants',
-      'ivs:StartComposition',
-      'ivs:StartComposition',
-      'ivs:StopComposition',
-      'ivs:TagResource',
-      'ivschat:CreateRoom',
-      'ivschat:DeleteRoom',
-      'ivschat:SendEvent',
-      'ivschat:TagResource',
-    ]);
+    expect(ivsActions).toEqual(
+      [
+        'ivs:CreateParticipantToken', // joinRound
+        'ivs:CreateParticipantToken', // watchRound
+        'ivs:CreateStage',
+        'ivs:DeleteStage',
+        'ivs:GetStage',
+        'ivs:ListParticipants',
+        'ivs:StartComposition',
+        'ivs:StartComposition',
+        'ivs:StopComposition',
+        'ivs:TagResource',
+        'ivschat:CreateChatToken',
+        'ivschat:CreateRoom',
+        'ivschat:DeleteRoom',
+        'ivschat:SendEvent',
+        'ivschat:TagResource',
+      ].sort(),
+    );
   });
 
   test('SlotTick should know the storage and encoder configurations', () => {
@@ -130,6 +135,14 @@ describe('stack', () => {
         }),
       },
     });
+  });
+
+  test('round read functions should know the recordings CDN, and join should have an alarm', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'PitchDrillGetRound',
+      Environment: { Variables: Match.objectLike({ RECORDINGS_CDN_DOMAIN_ENV: Match.anyValue() }) },
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', { AlarmName: 'pitchdrill-users-cannot-join-rounds' });
   });
 
   test('SlotTick alarms should exist, named by user impact', () => {

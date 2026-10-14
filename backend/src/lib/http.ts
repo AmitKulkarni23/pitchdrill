@@ -3,7 +3,8 @@ import { logger, metrics } from "./observability";
 
 /** An expected rejection whose message is safe to show the user. */
 export class UserError extends Error {
-  constructor(public status: number, public code: string, message: string) {
+  /** `extra` fields are merged into the error body (e.g. `availableAt`). */
+  constructor(public status: number, public code: string, message: string, public extra: Record<string, unknown> = {}) {
     super(message);
   }
 }
@@ -24,7 +25,7 @@ export const handle =
     } catch (e) {
       if (e instanceof UserError) {
         logger.info("Request rejected", { code: e.code, status: e.status });
-        return json(e.status, { error: { code: e.code, message: e.message } });
+        return json(e.status, { error: { code: e.code, message: e.message, ...e.extra } });
       }
       logger.error("Unhandled error", e as Error);
       return json(500, { error: { code: "internal", message: "Something went wrong. Please try again." } });
