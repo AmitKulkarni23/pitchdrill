@@ -19,6 +19,9 @@ import { routes } from '../../backend/src/routes';
 // Browser origins allowed to call the API. Add the Vercel domain once the frontend is deployed.
 const ALLOWED_ORIGINS = ['http://localhost:3000'];
 
+// OpenRouter model for briefs. Passed to Lambdas as OPENROUTER_MODEL_ENV (TASK-005).
+const OPENROUTER_MODEL = 'anthropic/claude-haiku-5.5';
+
 export class PitchDrillBackendStack extends cdk.Stack {
   /** Used by SlotTick to start compositions (TASK-007). */
   readonly encoderConfiguration: ivs.CfnEncoderConfiguration;
@@ -53,6 +56,7 @@ export class PitchDrillBackendStack extends cdk.Stack {
     });
 
     // Placeholder only; the real key is set out of band (aws secretsmanager put-secret-value) so it never enters Git.
+    // OPENROUTER_MODEL and this secret are wired into GenerateBriefs in TASK-005.
     const openRouterSecret = new secretsmanager.Secret(this, 'PitchDrillOpenRouterSecret', {
       secretName: 'pitchdrill/openrouter-api-key',
       secretStringValue: cdk.SecretValue.unsafePlainText('set-me'),

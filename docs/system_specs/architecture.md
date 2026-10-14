@@ -84,7 +84,7 @@ All of it is one CDK stack, `PitchDrillBackendStack` (`infra/lib/backend-stack.t
 | Live video | IVS Real-Time: one stage per round. Seller/buyer get PUBLISH+SUBSCRIBE tokens; spectators SUBSCRIBE-only (~0.3s latency). |
 | Recording | IVS server-side composition (grid layout, split screen) to S3, served via CloudFront (OAC). |
 | Chat | IVS Chat: one room per round. Spectators get SEND_MESSAGE tokens with their nickname; participants get receive-only tokens. Server events (round started, buzzer, tally) are sent with `SendEvent`. |
-| Briefs | OpenRouter, random product, generated when a round is paired (DynamoDB stream). Model ID is a CDK constant chosen by the user. Fallback product list if generation fails. |
+| Briefs | OpenRouter, random product, generated when a round is paired (DynamoDB stream). Model ID is the CDK constant `OPENROUTER_MODEL` (`anthropic/claude-haiku-5.5`, chosen by the user). Fallback product list if generation fails. |
 | No-shows | If both sides are not publishing at slot start, the round is cancelled (`no_show`). |
 | Votes | One per `voterId` per round, "Sold" / "Not sold", open from the buzzer forever (replays too). Tally always visible, broadcast live. |
 | Moderation | `POST /rounds/{id}/reports` is public. Admin routes (IAM): list reports, end a live round, hide a replay. No admin UI. |
