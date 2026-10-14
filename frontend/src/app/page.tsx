@@ -1,4 +1,5 @@
 import { Box, Button, Typography } from "@mui/material";
+import { LiveNow } from "@/components/LiveNow";
 import { MyBookings } from "@/components/MyBookings";
 import { ExampleRound } from "@/components/broadcast/ExampleRound";
 import { ProgramGuide } from "@/components/broadcast/ProgramGuide";
@@ -13,6 +14,7 @@ export default function Home() {
     <>
       <TopBar />
       <Box component="main">
+        <LiveNow />
         <MyBookings />
         <Box
           component="section"
