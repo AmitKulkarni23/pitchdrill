@@ -2,6 +2,7 @@ import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as apigw from 'aws-cdk-lib/aws-apigatewayv2';
+import { HttpIamAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { AccessLogFormat } from 'aws-cdk-lib/aws-apigateway';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
@@ -74,6 +75,9 @@ export class PitchDrillBackendStack extends cdk.Stack {
     const api = new apigw.HttpApi(this, 'PitchDrillApi', {
       apiName: 'pitchdrill-api',
       createDefaultStage: false,
+      // Closed to the internet while testing: every route needs an IAM (SigV4) signed request.
+      // Remove to open the public routes to browsers.
+      defaultAuthorizer: new HttpIamAuthorizer(),
       corsPreflight: {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: [apigw.CorsHttpMethod.GET, apigw.CorsHttpMethod.POST],
