@@ -103,7 +103,15 @@ cd infra && bunx cdk diff
 cd infra && bunx cdk deploy --all   # deploys to the default AWS profile's account, us-west-2
 ```
 
-Deployed API (stack output `PitchDrillApiUrl`): `https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com`. A failed *first* create strands the retained `pitchdrill-main` table; delete it (deletion protection off first) before redeploying.
+Deployed API (stack output `PitchDrillApiUrl`): `https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com`. **Currently locked to IAM** (`defaultAuthorizer: new HttpIamAuthorizer()` in `infra/lib/backend-stack.ts`): anonymous requests get 403. Remove that line and redeploy to open it to browsers. To call it while locked:
+
+```bash
+eval "$(aws configure export-credentials --format env)"
+curl --aws-sigv4 "aws:amz:us-west-2:execute-api" --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+  ${AWS_SESSION_TOKEN:+-H "x-amz-security-token: $AWS_SESSION_TOKEN"} \
+  https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com/slots
+```
+ A failed *first* create strands the retained `pitchdrill-main` table; delete it (deletion protection off first) before redeploying.
 
 ### Vercel
 
