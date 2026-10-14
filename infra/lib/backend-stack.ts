@@ -9,6 +9,7 @@ import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import { routes } from '../../backend/src/routes';
 
 // Browser origins allowed to call the API. Add the Vercel domain once the frontend is deployed.
 const ALLOWED_ORIGINS = ['http://localhost:3000'];
@@ -60,14 +61,24 @@ export class PitchDrillBackendStack extends cdk.Stack {
       return { fn, logGroup };
     };
 
-    const listSlots = makeFunction('ListSlots');
-    const createBooking = makeFunction('CreateBooking');
-    const getTicket = makeFunction('GetTicket');
+    // One function per distinct handler in the route registry; "createBooking" -> "CreateBooking".
+    const fns: Record<string, ReturnType<typeof makeFunction>> = {};
+    for (const handler of new Set(routes.map((r) => r.handler))) {
+      fns[handler] = makeFunction(`${handler[0]!.toUpperCase()}${handler.slice(1)}`);
+    }
 
     // Least privilege: each function gets only the table access it needs.
-    table.grantReadData(listSlots.fn);
-    table.grantReadWriteData(createBooking.fn);
-    table.grantReadData(getTicket.fn);
+    const tableGrants: Record<string, 'read' | 'readWrite'> = {
+      listSlots: 'read',
+      createBooking: 'readWrite',
+      getTicket: 'read',
+    };
+    for (const [handler, { fn }] of Object.entries(fns)) {
+      const grant = tableGrants[handler];
+      if (grant === 'readWrite') table.grantReadWriteData(fn);
+      else if (grant === 'read') table.grantReadData(fn);
+      else throw new Error(`No table grant declared for handler "${handler}"`);
+    }
 
     // ======================
     // 3. API LAYER
@@ -87,23 +98,16 @@ export class PitchDrillBackendStack extends cdk.Stack {
       },
     });
 
-    const routes = [
-      ...api.addRoutes({
-        path: '/slots',
-        methods: [apigw.HttpMethod.GET],
-        integration: new HttpLambdaIntegration('PitchDrillListSlotsIntegration', listSlots.fn),
-      }),
-      ...api.addRoutes({
-        path: '/bookings',
-        methods: [apigw.HttpMethod.POST],
-        integration: new HttpLambdaIntegration('PitchDrillCreateBookingIntegration', createBooking.fn),
-      }),
-      ...api.addRoutes({
-        path: '/ticket',
-        methods: [apigw.HttpMethod.GET],
-        integration: new HttpLambdaIntegration('PitchDrillGetTicketIntegration', getTicket.fn),
-      }),
-    ];
+    const iamAuthorizer = new HttpIamAuthorizer();
+    const apiRoutes = routes.flatMap((r) => {
+      const name = `${r.handler[0]!.toUpperCase()}${r.handler.slice(1)}`;
+      return api.addRoutes({
+        path: r.path,
+        methods: [apigw.HttpMethod[r.method]],
+        integration: new HttpLambdaIntegration(`PitchDrill${name}Integration`, fns[r.handler]!.fn),
+        ...(r.auth === 'iam' ? { authorizer: iamAuthorizer } : {}),
+      });
+    });
 
     const accessLogs = new logs.LogGroup(this, 'PitchDrillApiAccessLogs', {
       logGroupName: '/aws/apigateway/pitchdrill-api',
@@ -132,13 +136,16 @@ export class PitchDrillBackendStack extends cdk.Stack {
       },
     });
     const cfnStage = stage.node.defaultChild as apigw.CfnStage;
-    cfnStage.routeSettings = {
-      'POST /bookings': { ThrottlingRateLimit: 10, ThrottlingBurstLimit: 20 },
-      'GET /ticket': { ThrottlingRateLimit: 20, ThrottlingBurstLimit: 40 },
-      'GET /slots': { ThrottlingRateLimit: 20, ThrottlingBurstLimit: 40 },
-    };
+    cfnStage.routeSettings = Object.fromEntries(
+      routes
+        .filter((r) => r.throttle)
+        .map((r) => [
+          `${r.method} ${r.path}`,
+          { ThrottlingRateLimit: r.throttle!.rateLimit, ThrottlingBurstLimit: r.throttle!.burstLimit },
+        ]),
+    );
     // routeSettings is a raw JSON map, so keys use CloudFormation PascalCase. Routes must exist first.
-    routes.forEach((route) => cfnStage.node.addDependency(route));
+    apiRoutes.forEach((route) => cfnStage.node.addDependency(route));
 
     // ======================
     // 4. MONITORING
@@ -173,21 +180,21 @@ export class PitchDrillBackendStack extends cdk.Stack {
     unhandledErrorsAlarm(
       'PitchDrillUsersCannotSeeScheduleAlarm',
       'pitchdrill-users-cannot-see-schedule',
-      listSlots.logGroup,
+      fns.listSlots!.logGroup,
       'Visitors cannot load the list of bookable slots, so nobody can start a booking. ' +
         'Check ERROR lines in the PitchDrillListSlots log group and recent deploys.',
     );
     unhandledErrorsAlarm(
       'PitchDrillUsersCannotBookAlarm',
       'pitchdrill-users-cannot-book',
-      createBooking.logGroup,
+      fns.createBooking!.logGroup,
       'People are failing to book seller/buyer seats. Check ERROR lines in the PitchDrillCreateBooking ' +
         'log group, DynamoDB throttling on pitchdrill-main, and recent deploys.',
     );
     unhandledErrorsAlarm(
       'PitchDrillUsersCannotOpenTicketsAlarm',
       'pitchdrill-users-cannot-open-tickets',
-      getTicket.logGroup,
+      fns.getTicket!.logGroup,
       'People with valid ticket links cannot load their booking, so they cannot reach their round. ' +
         'Check ERROR lines in the PitchDrillGetTicket log group and DynamoDB health.',
     );

@@ -1,7 +1,6 @@
 // Runs against DynamoDB Local; skipped unless DYNAMODB_ENDPOINT is set (see CLAUDE.md).
 import { beforeAll, describe, expect, test } from "bun:test";
-import { CreateTableCommand, DeleteTableCommand } from "@aws-sdk/client-dynamodb";
-import { db, TABLE } from "../src/lib/db";
+import { createLocalTable } from "../src/dev/localTable";
 import { createBooking } from "../src/lib/bookings";
 import { slotsWithStats } from "../src/lib/slotStats";
 import { bookableSlots } from "../src/lib/slots";
@@ -9,17 +8,7 @@ import { bookableSlots } from "../src/lib/slots";
 const NOW = Date.parse("2099-01-01T12:00:00.000Z");
 
 describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("slotsWithStats", () => {
-  beforeAll(async () => {
-    await db.send(new DeleteTableCommand({ TableName: TABLE })).catch(() => {});
-    await db.send(
-      new CreateTableCommand({
-        TableName: TABLE,
-        BillingMode: "PAY_PER_REQUEST",
-        KeySchema: [{ AttributeName: "PK", KeyType: "HASH" }, { AttributeName: "SK", KeyType: "RANGE" }],
-        AttributeDefinitions: [{ AttributeName: "PK", AttributeType: "S" }, { AttributeName: "SK", AttributeType: "S" }],
-      }),
-    );
-  });
+  beforeAll(createLocalTable);
 
   test("given no STATS items, returns zeros for every bookable slot", async () => {
     const result = await slotsWithStats(NOW);

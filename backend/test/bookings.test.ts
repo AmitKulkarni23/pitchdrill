@@ -1,7 +1,7 @@
 // Runs against DynamoDB Local; skipped unless DYNAMODB_ENDPOINT is set (see CLAUDE.md).
 import { beforeAll, describe, expect, test } from "bun:test";
-import { CreateTableCommand, DeleteTableCommand } from "@aws-sdk/client-dynamodb";
 import { GetCommand } from "@aws-sdk/lib-dynamodb";
+import { createLocalTable } from "../src/dev/localTable";
 import { db, TABLE } from "../src/lib/db";
 import { createBooking, getBookingByTicket } from "../src/lib/bookings";
 import { slotsForDate } from "../src/lib/slots";
@@ -12,17 +12,7 @@ let tick = 0; // distinct createdAt per booking so queue order is deterministic
 const book = (slotId: string, handle: string, role: string, now = NOW + tick++) => createBooking({ slotId, handle, role }, now);
 
 describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("bookings", () => {
-  beforeAll(async () => {
-    await db.send(new DeleteTableCommand({ TableName: TABLE })).catch(() => {});
-    await db.send(
-      new CreateTableCommand({
-        TableName: TABLE,
-        BillingMode: "PAY_PER_REQUEST",
-        KeySchema: [{ AttributeName: "PK", KeyType: "HASH" }, { AttributeName: "SK", KeyType: "RANGE" }],
-        AttributeDefinitions: [{ AttributeName: "PK", AttributeType: "S" }, { AttributeName: "SK", AttributeType: "S" }],
-      }),
-    );
-  });
+  beforeAll(createLocalTable);
 
   test("pairs first-come-first-serve; extra seller waits", async () => {
     const s = slots[0]!;

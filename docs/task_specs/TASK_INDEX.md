@@ -8,8 +8,8 @@ Done before these specs (phase 1): booking core, ticket lookup, slots, CDK stack
 
 ## Backend & Infra
 
-- [TASK-001 — Move rounds to their own partition and add slot stats](backend/001-rounds-partition-and-slot-stats.md) · depends on: none
-- [TASK-002 — Route registry and local dev server](backend/002-routes-registry-and-dev-server.md) · depends on: 001
+- ~~[TASK-001 — Move rounds to their own partition and add slot stats](backend/001-rounds-partition-and-slot-stats.md) · depends on: none~~ (AWS deploy/verify steps left for the user)
+- ~~[TASK-002 — Route registry and local dev server](backend/002-routes-registry-and-dev-server.md) · depends on: 001~~ (`cdk diff`/deploy left for the user)
 - [TASK-003 — Recordings bucket, CloudFront and IVS composition config](infra/003-recordings-storage-and-ivs-config.md) · depends on: 002
 - [TASK-004 — Replay GSI, table stream and OpenRouter secret](infra/004-gsi-stream-and-openrouter-secret.md) · depends on: 003 · **asks the user** for the model ID and to set the key
 - [TASK-005 — Generate briefs with OpenRouter](backend/005-generate-briefs.md) · depends on: 001, 004

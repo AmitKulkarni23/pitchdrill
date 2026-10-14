@@ -94,6 +94,8 @@ cd frontend && bun run test      # bun test on src/lib
 ```bash
 cd backend && bun install
 cd backend && bun run typecheck
+cd backend && bun run dev:table    # (re)create the local table in DynamoDB Local
+cd backend && bun run dev          # local API on http://localhost:4000 (same routes as src/routes.ts, auth ignored)
 cd backend && bun run build        # bundles handlers to backend/dist (infra runs this on synth)
 
 # Tests run against DynamoDB Local (OrbStack/Docker must be running)
