@@ -8,6 +8,9 @@ import { AccessLogFormat } from 'aws-cdk-lib/aws-apigateway';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
+import * as scheduler from 'aws-cdk-lib/aws-scheduler';
+import * as targets from 'aws-cdk-lib/aws-scheduler-targets';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -70,7 +73,10 @@ export class PitchDrillBackendStack extends cdk.Stack {
     // Handlers are bundled by `bun run build` in backend/ (cdk.json runs it before synth).
     const code = lambda.Code.fromAsset(path.join(__dirname, '../../backend/dist'));
 
-    const makeFunction = (name: string, opts: { timeout?: cdk.Duration; environment?: Record<string, string> } = {}) => {
+    const makeFunction = (
+      name: string,
+      opts: { timeout?: cdk.Duration; memorySize?: number; reservedConcurrentExecutions?: number; environment?: Record<string, string> } = {},
+    ) => {
       const logGroup = new logs.LogGroup(this, `PitchDrill${name}Logs`, {
         logGroupName: `/aws/lambda/PitchDrill${name}`,
         retention: logs.RetentionDays.ONE_MONTH,
@@ -82,7 +88,8 @@ export class PitchDrillBackendStack extends cdk.Stack {
         architecture: lambda.Architecture.ARM_64,
         code,
         handler: `${name[0]!.toLowerCase()}${name.slice(1)}.handler`,
-        memorySize: 256,
+        memorySize: opts.memorySize ?? 256,
+        reservedConcurrentExecutions: opts.reservedConcurrentExecutions,
         timeout: opts.timeout ?? cdk.Duration.seconds(10),
         tracing: lambda.Tracing.ACTIVE,
         logGroup,
@@ -130,6 +137,38 @@ export class PitchDrillBackendStack extends cdk.Stack {
         ],
       }),
     );
+
+    // Drives every round through its lifecycle. One execution at a time; a throttled invoke is skipped and the next minute catches up.
+    const slotTick = makeFunction('SlotTick', {
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 512,
+      reservedConcurrentExecutions: 1,
+      environment: { OPENROUTER_SECRET_ARN_ENV: openRouterSecret.secretArn, OPENROUTER_MODEL_ENV: OPENROUTER_MODEL },
+    });
+    table.grantReadWriteData(slotTick.fn);
+    openRouterSecret.grantRead(slotTick.fn);
+    // IVS has no CDK grant methods: scope to the exact actions and resource types SlotTick uses.
+    slotTick.fn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ivs:CreateStage', 'ivs:DeleteStage', 'ivs:TagResource'],
+        resources: [this.formatArn({ service: 'ivs', resource: 'stage', resourceName: '*' })],
+      }),
+    );
+    slotTick.fn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ivschat:CreateRoom', 'ivschat:DeleteRoom', 'ivschat:TagResource'],
+        resources: [this.formatArn({ service: 'ivschat', resource: 'room', resourceName: '*' })],
+      }),
+    );
+    new scheduler.Schedule(this, 'PitchDrillSlotTickSchedule', {
+      scheduleName: 'pitchdrill-slot-tick',
+      schedule: scheduler.ScheduleExpression.cron({
+        minute: '*',
+        hour: '15-21',
+        timeZone: cdk.TimeZone.AMERICA_LOS_ANGELES,
+      }),
+      target: new targets.LambdaInvoke(slotTick.fn, { retryAttempts: 0 }),
+    });
 
     // ======================
     // 2b. MEDIA LAYER
@@ -293,6 +332,30 @@ export class PitchDrillBackendStack extends cdk.Stack {
       'People with valid ticket links cannot load their booking, so they cannot reach their round. ' +
         'Check ERROR lines in the PitchDrillGetTicket log group and DynamoDB health.',
     );
+    unhandledErrorsAlarm(
+      'PitchDrillRoundsNotStartingAlarm',
+      'pitchdrill-rounds-not-starting',
+      slotTick.logGroup,
+      'Scheduled rounds may not open or start, so booked people will not get their stage. ' +
+        'Check ERROR lines in the PitchDrillSlotTick log group, IVS service health and recent deploys.',
+    );
+    new cloudwatch.Alarm(this, 'PitchDrillRoundsUsingFallbackBriefsAlarm', {
+      alarmName: 'pitchdrill-rounds-using-fallback-briefs',
+      alarmDescription:
+        'Rounds are starting with the built-in fallback products because OpenRouter briefs failed. ' +
+        'Check the OpenRouter key in Secrets Manager, the model ID and OpenRouter status.',
+      metric: new cloudwatch.Metric({
+        namespace: 'PitchDrill',
+        metricName: 'BriefFallbackUsed',
+        dimensionsMap: { service: 'pitchdrill' }, // Powertools adds the service dimension to every metric
+        statistic: 'Sum',
+        period: cdk.Duration.hours(1),
+      }),
+      threshold: 3,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
     new cloudwatch.Alarm(this, 'PitchDrillUsersGettingServerErrorsAlarm', {
       alarmName: 'pitchdrill-users-getting-server-errors',
       alarmDescription:

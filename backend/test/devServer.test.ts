@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
 import { matchRoute, startServer, toEvent } from "../src/dev/server";
 import { createLocalTable } from "../src/dev/localTable";
 
@@ -29,7 +29,8 @@ describe("toEvent", () => {
 });
 
 describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("dev server", () => {
-  const server = startServer(0);
+  const runTick = mock(async (_now: number) => {});
+  const server = startServer(0, runTick);
   const base = `http://localhost:${server.port}`;
   beforeAll(createLocalTable);
   afterAll(() => server.stop(true));
@@ -44,6 +45,11 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("dev server", () => {
     const res = await fetch(`${base}/bookings`, { method: "OPTIONS" });
     expect(res.status).toBe(204);
     expect(res.headers.get("access-control-allow-headers")).toBe("content-type,x-ticket");
+  });
+  test("POST /dev/tick should call tick with the given time", async () => {
+    const res = await fetch(`${base}/dev/tick?now=2099-02-01T23:55:00.000Z`, { method: "POST" });
+    expect(res.status).toBe(200);
+    expect(runTick).toHaveBeenCalledWith(Date.parse("2099-02-01T23:55:00.000Z"));
   });
   test("unknown route should return 404 not_found", async () => {
     const res = await fetch(`${base}/nope`);

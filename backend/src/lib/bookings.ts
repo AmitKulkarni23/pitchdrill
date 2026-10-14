@@ -20,10 +20,50 @@ export interface Booking {
   handle: string;
   role: Role;
   createdAt: string;
-  status: "waiting" | "paired";
+  status: "waiting" | "paired" | "no_opponent";
   roundId?: string;
   opponentHandle?: string;
 }
+
+type Write = NonNullable<ConstructorParameters<typeof TransactWriteCommand>[0]["TransactItems"]>[number];
+interface Side {
+  bookingId: string;
+  handle: string;
+}
+
+/** Marks a waiting booking as paired with an opponent in a round. */
+const markPaired = (slotId: string, bookingId: string, roundId: string, opponentHandle: string): Write => ({
+  Update: {
+    TableName: TABLE,
+    Key: { PK: slotPk(slotId), SK: `BOOKING#${bookingId}` },
+    UpdateExpression: "SET roundId = :r, opponentHandle = :h, #s = :paired",
+    ExpressionAttributeNames: { "#s": "status" },
+    ExpressionAttributeValues: { ":r": roundId, ":h": opponentHandle, ":paired": "paired" },
+  },
+});
+
+/** The round's canonical META item plus its index item in the slot partition. */
+const roundItems = (slotId: string, roundId: string, seller: Side, buyer: Side): Write[] => [
+  {
+    Put: {
+      TableName: TABLE,
+      Item: {
+        PK: roundPk(roundId),
+        SK: "META",
+        roundId,
+        slotId,
+        sellerBookingId: seller.bookingId,
+        sellerHandle: seller.handle,
+        buyerBookingId: buyer.bookingId,
+        buyerHandle: buyer.handle,
+        status: "paired",
+        votesSold: 0,
+        votesNotSold: 0,
+      },
+    },
+  },
+  { Put: { TableName: TABLE, Item: { PK: slotPk(slotId), SK: `ROUND#${roundId}`, roundId } } },
+];
 
 /**
  * Books a slot and pairs with the oldest unpaired booking of the other role, if any.
@@ -43,8 +83,8 @@ export async function createBooking(input: { slotId: unknown; handle: unknown; r
   const ticket = newTicket();
   const booking: Booking = { slotId, bookingId: randomUUID(), handle, role, createdAt: new Date(now).toISOString(), status: "waiting" };
 
-  // ponytail: a seller and buyer booking at the same instant can both see an empty queue and both wait.
-  // Fix with a sweep at slot time that pairs leftover waiters if it shows up in practice.
+  // A seller and buyer booking at the same instant can both see an empty queue and both wait;
+  // the SlotTick sweep (openSlot) pairs any such leftovers.
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const { Items } = await db.send(
       new QueryCommand({
@@ -58,7 +98,7 @@ export async function createBooking(input: { slotId: unknown; handle: unknown; r
     const roundId = waiting ? randomUUID() : undefined;
     const mine: Booking = waiting ? { ...booking, status: "paired", roundId, opponentHandle: waiting.handle } : booking;
 
-    const writes: NonNullable<ConstructorParameters<typeof TransactWriteCommand>[0]["TransactItems"]> = [
+    const writes: Write[] = [
       {
         Put: {
           TableName: TABLE,
@@ -70,37 +110,11 @@ export async function createBooking(input: { slotId: unknown; handle: unknown; r
       { Put: { TableName: TABLE, Item: { PK: pk, SK: `BOOKING#${booking.bookingId}`, ...mine } } },
     ];
     if (waiting) {
-      const [seller, buyer] = role === "seller" ? [mine, waiting] : [waiting, mine];
+      const [seller, buyer] = (role === "seller" ? [mine, waiting] : [waiting, mine]) as unknown as [Side, Side];
       writes.push(
         { Delete: { TableName: TABLE, Key: { PK: pk, SK: waiting.SK }, ConditionExpression: "attribute_exists(PK)" } },
-        {
-          Update: {
-            TableName: TABLE,
-            Key: { PK: pk, SK: `BOOKING#${waiting.bookingId}` },
-            UpdateExpression: "SET roundId = :r, opponentHandle = :h, #s = :paired",
-            ExpressionAttributeNames: { "#s": "status" },
-            ExpressionAttributeValues: { ":r": roundId, ":h": handle, ":paired": "paired" },
-          },
-        },
-        {
-          Put: {
-            TableName: TABLE,
-            Item: {
-              PK: roundPk(roundId!),
-              SK: "META",
-              roundId,
-              slotId,
-              sellerBookingId: seller.bookingId,
-              sellerHandle: seller.handle,
-              buyerBookingId: buyer.bookingId,
-              buyerHandle: buyer.handle,
-              status: "paired",
-              votesSold: 0,
-              votesNotSold: 0,
-            },
-          },
-        },
-        { Put: { TableName: TABLE, Item: { PK: pk, SK: `ROUND#${roundId}`, roundId } } },
+        markPaired(slotId, waiting.bookingId, roundId!, handle),
+        ...roundItems(slotId, roundId!, seller, buyer),
         {
           Update: {
             TableName: TABLE,
@@ -154,4 +168,96 @@ export async function getBookingByTicket(ticket: unknown): Promise<Booking> {
   if (!Item) throw new UserError(404, "bad_ticket", "That ticket isn't valid.");
   const { PK, SK, ...booking } = Item;
   return booking as Booking;
+}
+
+interface Waiter extends Side {
+  SK: string;
+}
+
+/** All waiting entries of a role in a slot, oldest first. */
+export async function listWaiting(slotId: string, role: Role): Promise<Waiter[]> {
+  const out: Waiter[] = [];
+  let ExclusiveStartKey: Record<string, unknown> | undefined;
+  do {
+    const page = await db.send(
+      new QueryCommand({
+        TableName: TABLE,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :wait)",
+        ExpressionAttributeValues: { ":pk": slotPk(slotId), ":wait": `WAIT#${role}#` },
+        ExclusiveStartKey,
+      }),
+    );
+    out.push(...(page.Items as Waiter[]));
+    ExclusiveStartKey = page.LastEvaluatedKey;
+  } while (ExclusiveStartKey);
+  return out;
+}
+
+/**
+ * Pairs one waiting seller with one waiting buyer in a single transaction.
+ * Returns the new round ID, or undefined if either waiter was taken meanwhile.
+ */
+export async function pairWaiting(slotId: string, seller: Waiter, buyer: Waiter): Promise<string | undefined> {
+  const pk = slotPk(slotId);
+  const roundId = randomUUID();
+  try {
+    await db.send(
+      new TransactWriteCommand({
+        TransactItems: [
+          { Delete: { TableName: TABLE, Key: { PK: pk, SK: seller.SK }, ConditionExpression: "attribute_exists(PK)" } },
+          { Delete: { TableName: TABLE, Key: { PK: pk, SK: buyer.SK }, ConditionExpression: "attribute_exists(PK)" } },
+          markPaired(slotId, seller.bookingId, roundId, buyer.handle),
+          markPaired(slotId, buyer.bookingId, roundId, seller.handle),
+          ...roundItems(slotId, roundId, seller, buyer),
+          {
+            Update: {
+              TableName: TABLE,
+              Key: { PK: pk, SK: STATS_SK },
+              UpdateExpression: "ADD waitingSellers :dec, waitingBuyers :dec, rounds :one",
+              ExpressionAttributeValues: { ":dec": -1, ":one": 1 },
+            },
+          },
+        ],
+      }),
+    );
+    metrics.addMetric("RoundPaired", MetricUnit.Count, 1);
+    return roundId;
+  } catch (e) {
+    if (e instanceof TransactionCanceledException) return undefined;
+    throw e;
+  }
+}
+
+/** Tells a waiter nobody was found: status no_opponent, off the queue, counter decremented. */
+export async function markNoOpponent(slotId: string, role: Role, waiter: Waiter): Promise<void> {
+  const pk = slotPk(slotId);
+  try {
+    await db.send(
+      new TransactWriteCommand({
+        TransactItems: [
+          { Delete: { TableName: TABLE, Key: { PK: pk, SK: waiter.SK }, ConditionExpression: "attribute_exists(PK)" } },
+          {
+            Update: {
+              TableName: TABLE,
+              Key: { PK: pk, SK: `BOOKING#${waiter.bookingId}` },
+              UpdateExpression: "SET #s = :s",
+              ConditionExpression: "#s = :waiting",
+              ExpressionAttributeNames: { "#s": "status" },
+              ExpressionAttributeValues: { ":s": "no_opponent", ":waiting": "waiting" },
+            },
+          },
+          {
+            Update: {
+              TableName: TABLE,
+              Key: { PK: pk, SK: STATS_SK },
+              UpdateExpression: `ADD ${waitingAttr(role)} :dec`,
+              ExpressionAttributeValues: { ":dec": -1 },
+            },
+          },
+        ],
+      }),
+    );
+  } catch (e) {
+    if (!(e instanceof TransactionCanceledException)) throw e; // already handled by a concurrent tick
+  }
 }

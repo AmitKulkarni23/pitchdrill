@@ -1,5 +1,6 @@
 // Local stand-in for API Gateway: serves every route in src/routes.ts on localhost:4000. Auth is ignored.
 import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2, Context } from "aws-lambda";
+import { tick } from "../handlers/slotTick";
 import { routes, type RouteDef } from "../routes";
 
 const ALLOWED_ORIGIN = "http://localhost:3000";
@@ -69,8 +70,17 @@ const context = (): Context =>
 const notFound = () =>
   Response.json({ error: { code: "not_found", message: "No such route." } }, { status: 404, headers: cors });
 
-async function dispatch(req: Request): Promise<Response> {
+type Tick = (now: number) => Promise<void>;
+
+async function dispatch(req: Request, runTick: Tick): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  const url = new URL(req.url);
+  // Dev-only: run SlotTick as if it were `now` (ISO), e.g. POST /dev/tick?now=2026-10-14T22:55:00Z
+  if (req.method === "POST" && url.pathname === "/dev/tick") {
+    const now = Date.parse(url.searchParams.get("now") ?? "") || Date.now();
+    await runTick(now);
+    return Response.json({ ok: true, now: new Date(now).toISOString() }, { headers: cors });
+  }
   const match = matchRoute(req.method, new URL(req.url).pathname);
   if (!match) return notFound();
   const { handler } = (await import(`../handlers/${match.route.handler}`)) as { handler: Handler };
@@ -79,8 +89,8 @@ async function dispatch(req: Request): Promise<Response> {
   return new Response(r.body ?? null, { status: r.statusCode ?? 200, headers: { ...(r.headers as Record<string, string>), ...cors } });
 }
 
-export function startServer(port = Number(process.env.PORT ?? 4000)) {
-  return Bun.serve({ port, fetch: dispatch });
+export function startServer(port = Number(process.env.PORT ?? 4000), runTick: Tick = tick) {
+  return Bun.serve({ port, fetch: (req) => dispatch(req, runTick) });
 }
 
 if (import.meta.main) {

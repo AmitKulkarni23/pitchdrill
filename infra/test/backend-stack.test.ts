@@ -82,6 +82,45 @@ describe('stack', () => {
     });
   });
 
+  test('SlotTick should run every minute 15:00-21:59 Pacific, single-flight', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'PitchDrillSlotTick',
+      Timeout: 60,
+      MemorySize: 512,
+      ReservedConcurrentExecutions: 1,
+    });
+    template.hasResourceProperties('AWS::Scheduler::Schedule', {
+      ScheduleExpression: 'cron(* 15-21 * * ? *)',
+      ScheduleExpressionTimezone: 'America/Los_Angeles',
+      Target: Match.objectLike({ RetryPolicy: { MaximumRetryAttempts: 0 } }),
+    });
+  });
+
+  test('SlotTick IVS permissions should be limited to stage and room actions', () => {
+    const policies = template.findResources('AWS::IAM::Policy');
+    const statements = Object.values(policies).flatMap((p: any) => p.Properties.PolicyDocument.Statement);
+    const ivsActions = statements
+      .flatMap((st: any) => (Array.isArray(st.Action) ? st.Action : [st.Action]))
+      .filter((a: string) => a.startsWith('ivs'))
+      .sort();
+    expect(ivsActions).toEqual([
+      'ivs:CreateStage',
+      'ivs:DeleteStage',
+      'ivs:TagResource',
+      'ivschat:CreateRoom',
+      'ivschat:DeleteRoom',
+      'ivschat:TagResource',
+    ]);
+  });
+
+  test('SlotTick alarms should exist, named by user impact', () => {
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', { AlarmName: 'pitchdrill-rounds-not-starting' });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'pitchdrill-rounds-using-fallback-briefs',
+      Threshold: 3,
+    });
+  });
+
   test('recordings bucket should block all public access and enforce SSL', () => {
     template.hasResource('AWS::S3::Bucket', {
       DeletionPolicy: 'Retain',
