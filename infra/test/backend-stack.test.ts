@@ -148,6 +148,11 @@ describe('stack', () => {
     template.hasResourceProperties('AWS::CloudWatch::Alarm', { AlarmName: 'pitchdrill-users-cannot-vote' });
   });
 
+  test('replay feed should read the GSI', () => {
+    const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('/index/*');
+  });
+
   test('SlotTick alarms should exist, named by user impact', () => {
     template.hasResourceProperties('AWS::CloudWatch::Alarm', { AlarmName: 'pitchdrill-rounds-not-starting' });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {

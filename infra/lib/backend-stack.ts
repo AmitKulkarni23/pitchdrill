@@ -116,6 +116,9 @@ export class PitchDrillBackendStack extends cdk.Stack {
       watchRound: 'read',
       createChatToken: 'read',
       castVote: 'readWrite',
+      listReplays: 'read',
+      listComments: 'read',
+      createComment: 'readWrite',
     };
     for (const [handler, { fn }] of Object.entries(fns)) {
       const grant = tableGrants[handler];
@@ -221,7 +224,7 @@ export class PitchDrillBackendStack extends cdk.Stack {
       },
     });
 
-    for (const handler of ['getRound', 'listLiveRounds']) {
+    for (const handler of ['getRound', 'listLiveRounds', 'listReplays']) {
       fns[handler]!.fn.addEnvironment('RECORDINGS_CDN_DOMAIN_ENV', recordingsCdn.distributionDomainName);
     }
 
