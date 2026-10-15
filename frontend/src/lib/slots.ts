@@ -82,11 +82,15 @@ type Stats = Omit<SlotWithStats, "slotId"> | null;
 export const seatsLeft = (stats: Stats, role: "seller" | "buyer"): number =>
   Math.max(0, MAX_PER_ROLE - (stats ? (role === "seller" ? stats.sellers : stats.buyers) : 0));
 
-/** "Seller 3 left · Buyer full", or "Full" when both sides are. */
+/** "All seats open", "3 seller seats · 1 buyer seat open", "Seller seats full · 2 buyer seats open" or "Full". */
 export function seatsLabel(stats: Stats): string {
-  if (isFull(stats)) return "Full";
-  const side = (name: string, n: number) => `${name} ${n ? `${n} left` : "full"}`;
-  return `${side("Seller", seatsLeft(stats, "seller"))} · ${side("Buyer", seatsLeft(stats, "buyer"))}`;
+  const [s, b] = [seatsLeft(stats, "seller"), seatsLeft(stats, "buyer")];
+  if (!s && !b) return "Full";
+  if (s === MAX_PER_ROLE && b === MAX_PER_ROLE) return "All seats open";
+  const seats = (n: number, role: string) => `${n} ${role} seat${n === 1 ? "" : "s"}`;
+  if (!s) return `Seller seats full · ${seats(b, "buyer")} open`;
+  if (!b) return `Buyer seats full · ${seats(s, "seller")} open`;
+  return `${seats(s, "seller")} · ${seats(b, "buyer")} open`;
 }
 
 /** When someone is waiting, booking the other side guarantees a round. */

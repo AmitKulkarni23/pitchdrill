@@ -29,9 +29,10 @@ test("timeLabel: should format in the given time zone", () => {
 
 test("seatsLabel and waitHint: should describe seats left per side", () => {
   const stats = (sellers: number, buyers: number, waitingSellers: number, waitingBuyers: number) => ({ sellers, buyers, waitingSellers, waitingBuyers, rounds: Math.min(sellers, buyers) });
-  expect(seatsLabel(null)).toBe("Seller 4 left · Buyer 4 left");
-  expect(seatsLabel(stats(1, 3, 0, 2))).toBe("Seller 3 left · Buyer 1 left");
-  expect(seatsLabel(stats(4, 2, 2, 0))).toBe("Seller full · Buyer 2 left");
+  expect(seatsLabel(null)).toBe("All seats open");
+  expect(seatsLabel(stats(1, 3, 0, 2))).toBe("3 seller seats · 1 buyer seat open");
+  expect(seatsLabel(stats(4, 2, 2, 0))).toBe("Seller seats full · 2 buyer seats open");
+  expect(seatsLabel(stats(1, 4, 0, 3))).toBe("Buyer seats full · 3 seller seats open");
   expect(seatsLabel(stats(4, 4, 0, 0))).toBe("Full");
   expect(waitHint(null)).toBeNull();
   expect(waitHint(stats(3, 1, 2, 0))).toBe("A seller is waiting: book as buyer to play for sure");
