@@ -76,17 +76,24 @@ export function dayLabel(dayKey: string, now: number, timeZone: string): string 
 export const timeLabel = (slotId: string, timeZone: string): string =>
   new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone }).format(Date.parse(slotId));
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+type Stats = Omit<SlotWithStats, "slotId"> | null;
 
-/** What the guide says about a slot; null stats means counts are unavailable. */
-export function waitingLabel(stats: Omit<SlotWithStats, "slotId"> | null): string {
-  if (!stats) return "Open";
+/** Seats left for one role; null stats (counts unavailable) means every seat is open. */
+export const seatsLeft = (stats: Stats, role: "seller" | "buyer"): number =>
+  Math.max(0, MAX_PER_ROLE - (stats ? (role === "seller" ? stats.sellers : stats.buyers) : 0));
+
+/** "Seller 3 left · Buyer full", or "Full" when both sides are. */
+export function seatsLabel(stats: Stats): string {
   if (isFull(stats)) return "Full";
-  if (stats.sellers >= MAX_PER_ROLE) return "Seller seats full · buyers wanted";
-  if (stats.buyers >= MAX_PER_ROLE) return "Buyer seats full · sellers wanted";
-  if (stats.waitingSellers > 0) return `${plural(stats.waitingSellers, "seller")} waiting for a buyer`;
-  if (stats.waitingBuyers > 0) return `${plural(stats.waitingBuyers, "buyer")} waiting for a seller`;
-  return stats.rounds > 0 ? `${plural(stats.rounds, "round")} booked · open` : "Open";
+  const side = (name: string, n: number) => `${name} ${n ? `${n} left` : "full"}`;
+  return `${side("Seller", seatsLeft(stats, "seller"))} · ${side("Buyer", seatsLeft(stats, "buyer"))}`;
+}
+
+/** When someone is waiting, booking the other side guarantees a round. */
+export function waitHint(stats: Stats): string | null {
+  if (stats?.waitingSellers) return "A seller is waiting: book as buyer to play for sure";
+  if (stats?.waitingBuyers) return "A buyer is waiting: book as seller to play for sure";
+  return null;
 }
 
 /** "4:45 PM" today, "Tomorrow 4:45 PM" or "Thu, Oct 16 4:45 PM" otherwise. */

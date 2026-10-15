@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { countdown, dayLabel, groupSlotsByLocalDay, scheduleSlots, slotLabel, timeLabel, waitingLabel } from "./slots";
+import { countdown, dayLabel, groupSlotsByLocalDay, scheduleSlots, seatsLabel, slotLabel, timeLabel, waitHint } from "./slots";
 
 const NOW = Date.parse("2026-10-14T23:30:00.000Z"); // Wed 4:30 PM PDT
 
@@ -27,15 +27,15 @@ test("timeLabel: should format in the given time zone", () => {
   expect(timeLabel("2026-10-14T23:45:00.000Z", "America/Los_Angeles")).toBe("4:45 PM");
 });
 
-test("waitingLabel: should describe counts and full seats", () => {
-  const stats = (sellers: number, buyers: number, waitingSellers: number, waitingBuyers: number, rounds: number) => ({ sellers, buyers, waitingSellers, waitingBuyers, rounds });
-  expect(waitingLabel(null)).toBe("Open");
-  expect(waitingLabel(stats(1, 0, 1, 0, 0))).toBe("1 seller waiting for a buyer");
-  expect(waitingLabel(stats(3, 1, 2, 0, 1))).toBe("2 sellers waiting for a buyer");
-  expect(waitingLabel(stats(0, 1, 0, 1, 0))).toBe("1 buyer waiting for a seller");
-  expect(waitingLabel(stats(3, 3, 0, 0, 3))).toBe("3 rounds booked · open");
-  expect(waitingLabel(stats(4, 2, 2, 0, 2))).toBe("Seller seats full · buyers wanted");
-  expect(waitingLabel(stats(4, 4, 0, 0, 4))).toBe("Full");
+test("seatsLabel and waitHint: should describe seats left per side", () => {
+  const stats = (sellers: number, buyers: number, waitingSellers: number, waitingBuyers: number) => ({ sellers, buyers, waitingSellers, waitingBuyers, rounds: Math.min(sellers, buyers) });
+  expect(seatsLabel(null)).toBe("Seller 4 left · Buyer 4 left");
+  expect(seatsLabel(stats(1, 3, 0, 2))).toBe("Seller 3 left · Buyer 1 left");
+  expect(seatsLabel(stats(4, 2, 2, 0))).toBe("Seller full · Buyer 2 left");
+  expect(seatsLabel(stats(4, 4, 0, 0))).toBe("Full");
+  expect(waitHint(null)).toBeNull();
+  expect(waitHint(stats(3, 1, 2, 0))).toBe("A seller is waiting: book as buyer to play for sure");
+  expect(waitHint(stats(1, 2, 0, 1))).toBe("A buyer is waiting: book as seller to play for sure");
 });
 
 test("slotLabel: should drop the day for today's slots", () => {

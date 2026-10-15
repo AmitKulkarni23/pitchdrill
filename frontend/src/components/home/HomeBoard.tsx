@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Box, ButtonBase, Typography } from "@mui/material";
 import { useNow, useTimeZone } from "@/hooks/useClock";
 import { api } from "@/lib/api";
-import { countdown, dayLabel, groupSlotsByLocalDay, isFull, MAX_PER_ROLE, scheduleSlots, slotLabel, timeLabel, waitingLabel } from "@/lib/slots";
+import { countdown, dayLabel, groupSlotsByLocalDay, isFull, MAX_PER_ROLE, scheduleSlots, seatsLabel, slotLabel, timeLabel, waitHint } from "@/lib/slots";
 import { hall, panel } from "@/config/tokens";
 import type { SlotWithStats } from "@/types/api";
 import { LiveTile, type LiveRound } from "./LiveTile";
@@ -21,6 +21,14 @@ const DEMO = [
   ["Cold brew subscription", "jordan_l", "sam_w"],
   ["Password manager for families", "aisha_m", "leo_t"],
 ] as const;
+// Sample seat counts for the first few upcoming slots (sellers, buyers, waiting sellers, waiting buyers).
+const DEMO_STATS = [
+  [1, 0, 1, 0],
+  [4, 2, 2, 0],
+  [0, 0, 0, 0],
+  [4, 4, 0, 0],
+  [2, 3, 0, 1],
+].map(([sellers, buyers, waitingSellers, waitingBuyers]) => ({ sellers, buyers, waitingSellers, waitingBuyers, rounds: Math.min(sellers, buyers) }));
 function demoRounds(now: number): LiveRound[] {
   const minute = now - (now % 60_000);
   return DEMO.map(([product, sellerHandle, buyerHandle], i) => ({ roundId: `demo-${i}`, product, sellerHandle, buyerHandle, endsAt: minute + 60_000 - i * 4_000 }));
@@ -57,7 +65,7 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
 
   const slots: Slot[] = Array.isArray(remote)
     ? remote.filter((s) => Date.parse(s.slotId) - 5 * 60_000 >= now).map(({ slotId, ...stats }) => ({ slotId, stats }))
-    : scheduleSlots(now).map((slotId) => ({ slotId, stats: null }));
+    : scheduleSlots(now).map((slotId, i) => ({ slotId, stats: (demo && DEMO_STATS[i]) || null }));
   // A picked slot can close while the page sits open; fall back to the next one.
   const selected = slots.find((s) => s.slotId === picked && !isFull(s.stats))?.slotId ?? slots.find((s) => !isFull(s.stats))?.slotId ?? null;
   const next = slots[0]?.slotId;
@@ -163,15 +171,19 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
                 {active.slots.map((s, i) => {
                   const on = s.slotId === selected;
                   const full = isFull(s.stats);
-                  const label = waitingLabel(s.stats);
+                  const label = seatsLabel(s.stats);
+                  const hint = waitHint(s.stats);
                   return (
                     <Box component="li" key={s.slotId} sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2, px: 2.25, py: 1.5, borderTop: i ? `1px solid ${hall.lineSoft}` : 0, bgcolor: on ? hall.greenTint : "transparent" }}>
                       <Box sx={{ width: 92, fontSize: 18, fontWeight: 800 }}>{timeLabel(s.slotId, timeZone)}</Box>
-                      <Box sx={{ flex: "999 1 180px", fontSize: 14, color: on ? hall.greenDeep : hall.muted }}>{label}</Box>
+                      <Box sx={{ flex: "999 1 200px", display: "grid", gap: 0.25 }}>
+                        <Box sx={{ fontSize: 14, fontWeight: 600, color: full ? hall.muted : hall.ink }}>{label}</Box>
+                        {hint && <Box sx={{ fontSize: 13, fontWeight: 600, color: hall.greenDeep }}>{hint}</Box>}
+                      </Box>
                       <ButtonBase
                         aria-pressed={on}
                         disabled={full}
-                        aria-label={`Book ${timeLabel(s.slotId, timeZone)}, ${label}`}
+                        aria-label={`Book ${timeLabel(s.slotId, timeZone)}, ${label}${hint ? `. ${hint}` : ""}`}
                         onClick={() => pick(s.slotId)}
                         sx={{
                           fontSize: 14,
@@ -195,7 +207,7 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
               </Box>
               <Typography variant="body2" sx={{ color: hall.muted }}>
                 Times are in your time zone ({timeZone}). Booking closes 5 minutes before each round.
-                {remote === "unavailable" && " Seat counts appear once booking opens to the public."}
+                {demo ? " Seat counts shown are sample data." : remote === "unavailable" && " Seat counts appear once booking opens to the public."}
               </Typography>
             </>
           ) : (
