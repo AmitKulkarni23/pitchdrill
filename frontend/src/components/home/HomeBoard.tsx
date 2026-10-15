@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { Box, ButtonBase, Typography } from "@mui/material";
 import { useNow, useTimeZone } from "@/hooks/useClock";
 import { api } from "@/lib/api";
@@ -12,9 +12,9 @@ import { PlayPanel } from "./PlayPanel";
 
 type Slot = { slotId: string; stats: Omit<SlotWithStats, "slotId"> | null };
 
-// ponytail: `?demo` fills Watch with sample rounds until GET /rounds/live (TASK-009) exists; delete with TASK-018.
-const noop = () => () => {};
-const useDemo = () => useSyncExternalStore(noop, () => new URLSearchParams(location.search).has("demo"), () => false);
+// TEMPORARY sample live rounds so the Watch grid is visible before GET /rounds/live (TASK-009) exists.
+// Set to false (or delete with DEMO/demoRounds) before going public; TASK-018 replaces it with real data.
+const SHOW_DEMO = true;
 const DEMO = [
   ["Noise-cancelling headphones", "maya_k", "dan_r"],
   ["Standing desk converter", "priya_s", "tom_b"],
@@ -35,7 +35,7 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
   const [remote, setRemote] = useState<SlotWithStats[] | "unavailable" | null>(null);
   const [day, setDay] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
-  const demo = useDemo();
+  const demo = SHOW_DEMO;
 
   useEffect(() => {
     api

@@ -34,4 +34,4 @@ Done before these specs (phase 1): booking core, ticket lookup, slots, CDK stack
 
 ## Go Live
 
-- [TASK-021 — Open the API to the public](infra/021-unlock-public-api.md) · depends on: 013, 019, 020 · **requires user approval**
+- [TASK-021 — Open the API to the public](infra/021-unlock-public-api.md) · depends on: 013, 019, 020 · **requires user approval** · also set `SHOW_DEMO = false` in `frontend/src/components/home/HomeBoard.tsx` if TASK-018 has not removed it
