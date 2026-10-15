@@ -1,0 +1,482 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-15T00:20:52+00:00",
+  "title": "Design System: PitchDrill",
+  "extensions": {
+    "colorMeta": {
+      "ground": {
+        "role": "neutral",
+        "displayName": "Hall Grey",
+        "canonical": "#F7F7F5",
+        "tonalRamp": [
+          "#0B0B0A",
+          "#252524",
+          "#424240",
+          "#616160",
+          "#828281",
+          "#A5A5A3",
+          "#C9C9C7",
+          "#EEEEEC"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel White",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#A5A5A5",
+          "#C9C9C9",
+          "#EEEEEE"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#E6E8EB",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#242527",
+          "#404244",
+          "#606164",
+          "#818285",
+          "#A3A5A8",
+          "#C7C9CC",
+          "#EDEFF2"
+        ]
+      },
+      "line-soft": {
+        "role": "neutral",
+        "displayName": "Soft Hairline",
+        "canonical": "#EEF0F2",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#242527",
+          "#414244",
+          "#606163",
+          "#818284",
+          "#A3A5A7",
+          "#C7C9CB",
+          "#EDEFF1"
+        ]
+      },
+      "field": {
+        "role": "neutral",
+        "displayName": "Field Line",
+        "canonical": "#D5D9DE",
+        "tonalRamp": [
+          "#090B0F",
+          "#222529",
+          "#3F4246",
+          "#5E6266",
+          "#7F8387",
+          "#A2A5AA",
+          "#C6C9CE",
+          "#EBEFF4"
+        ]
+      },
+      "chip": {
+        "role": "neutral",
+        "displayName": "Chip Grey",
+        "canonical": "#EEF0EE",
+        "tonalRamp": [
+          "#0A0C0A",
+          "#242524",
+          "#414241",
+          "#606260",
+          "#818381",
+          "#A4A5A4",
+          "#C8CAC8",
+          "#EDEFED"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1C1F24",
+        "tonalRamp": [
+          "#090B10",
+          "#22252A",
+          "#3F4248",
+          "#5E6167",
+          "#7F8289",
+          "#A1A5AC",
+          "#C5C9D0",
+          "#EAEFF6"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Slate",
+        "canonical": "#5B6270",
+        "tonalRamp": [
+          "#060B15",
+          "#1F2531",
+          "#3C424F",
+          "#5A616F",
+          "#7B8291",
+          "#9DA5B5",
+          "#C1C9D9",
+          "#E7EFFE"
+        ]
+      },
+      "green": {
+        "role": "primary",
+        "displayName": "Study Green",
+        "canonical": "#2F6E50",
+        "tonalRamp": [
+          "#010F07",
+          "#002E1B",
+          "#074F33",
+          "#316F51",
+          "#539272",
+          "#76B594",
+          "#9ADAB7",
+          "#C4FEDE"
+        ]
+      },
+      "green-deep": {
+        "role": "primary",
+        "displayName": "Deep Study Green",
+        "canonical": "#1F5A3F",
+        "tonalRamp": [
+          "#000F07",
+          "#042D1C",
+          "#104E34",
+          "#356F52",
+          "#579173",
+          "#7AB495",
+          "#9DD9B9",
+          "#C2FFDD"
+        ]
+      },
+      "green-tint": {
+        "role": "primary",
+        "displayName": "Green Wash",
+        "canonical": "#E7F1EC",
+        "tonalRamp": [
+          "#070D0A",
+          "#202723",
+          "#3C4440",
+          "#5B645F",
+          "#7C8580",
+          "#9EA8A3",
+          "#C2CCC7",
+          "#E7F1EC"
+        ]
+      },
+      "sand": {
+        "role": "secondary",
+        "displayName": "Sand",
+        "canonical": "#F1EDE4",
+        "tonalRamp": [
+          "#0D0B06",
+          "#28251E",
+          "#45423A",
+          "#646159",
+          "#86827A",
+          "#A8A59C",
+          "#CDC9C0",
+          "#F2EEE5"
+        ]
+      },
+      "sand-ink": {
+        "role": "secondary",
+        "displayName": "Sand Ink",
+        "canonical": "#5E4511",
+        "tonalRamp": [
+          "#110A01",
+          "#322200",
+          "#563D06",
+          "#775D2C",
+          "#997E4D",
+          "#BDA16F",
+          "#E2C592",
+          "#FEECCE"
+        ]
+      },
+      "seller": {
+        "role": "secondary",
+        "displayName": "Seller Slate",
+        "canonical": "#DCE4EE",
+        "tonalRamp": [
+          "#070C12",
+          "#20262D",
+          "#3C434B",
+          "#5B626A",
+          "#7C838C",
+          "#9EA6AF",
+          "#C2CAD4",
+          "#E7EFF9"
+        ]
+      },
+      "seller-ink": {
+        "role": "secondary",
+        "displayName": "Seller Ink",
+        "canonical": "#34506F",
+        "tonalRamp": [
+          "#000B1D",
+          "#0B2642",
+          "#284462",
+          "#476484",
+          "#6785A7",
+          "#89A8CB",
+          "#ACCDF1",
+          "#E3F0FF"
+        ]
+      },
+      "buyer": {
+        "role": "secondary",
+        "displayName": "Buyer Sand",
+        "canonical": "#EFE6D2",
+        "tonalRamp": [
+          "#100A01",
+          "#2B2415",
+          "#494131",
+          "#68604F",
+          "#8A826F",
+          "#ADA491",
+          "#D1C8B5",
+          "#F7EEDA"
+        ]
+      },
+      "buyer-ink": {
+        "role": "secondary",
+        "displayName": "Buyer Ink",
+        "canonical": "#6B4E12",
+        "tonalRamp": [
+          "#110A01",
+          "#322200",
+          "#563D06",
+          "#795C23",
+          "#9C7D45",
+          "#C0A068",
+          "#E5C48B",
+          "#FEECCE"
+        ]
+      },
+      "live": {
+        "role": "tertiary",
+        "displayName": "Signal Red",
+        "canonical": "#B42318",
+        "tonalRamp": [
+          "#1E0100",
+          "#4D0100",
+          "#7E0B05",
+          "#B12015",
+          "#DA4A3B",
+          "#FB7866",
+          "#FDB4A8",
+          "#FFE9E5"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The single page headline."
+      },
+      "numeral": {
+        "displayName": "Numeral",
+        "purpose": "Next-round time in the Watch empty state; 36px phone, 44px from sm."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Panel and section headings."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Chosen slot in Play; 20px booked confirmation; 18px row times."
+      },
+      "item": {
+        "displayName": "Item",
+        "purpose": "Step titles, role names, nav links."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Lead and reading copy; 15px on phone."
+      },
+      "body-small": {
+        "displayName": "Body Small",
+        "purpose": "Helper and footnote copy in muted."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Form labels, legends, tabs, row buttons; 13px for sub-labels."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Button text, sentence case; booking submit is 16px/800."
+      }
+    },
+    "shadows": [
+      {
+        "name": "inset-ring",
+        "value": "inset 0 0 0 1px #D5D9DE",
+        "purpose": "Layout-stable border on custom controls at rest; 2px #2F6E50 when selected. Never a cast shadow."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Button background transitions."
+      },
+      {
+        "name": "duration-state",
+        "value": "160ms",
+        "purpose": "All state transitions (background, border, ring)."
+      },
+      {
+        "name": "press",
+        "value": "translateY(1px)",
+        "purpose": "Button active state."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "600px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one action color: booking, copying the ticket link, Book a seat.",
+      "html": "<button class=\"ds-btn-primary\">Book 4:15 PM as seller</button>",
+      "css": ".ds-btn-primary { font-family: Manrope, system-ui, sans-serif; background: #2F6E50; color: #fff; border: 0; border-radius: 10px; padding: 11px 18px; font-size: 15px; font-weight: 700; cursor: pointer; transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-primary:hover { background: #1F5A3F; } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 2px solid #2F6E50; outline-offset: 2px; }"
+    },
+    {
+      "name": "Outlined Button",
+      "kind": "button",
+      "refersTo": "button-outlined",
+      "description": "Secondary action beside a primary (Add to calendar).",
+      "html": "<button class=\"ds-btn-outlined\">Add to calendar</button>",
+      "css": ".ds-btn-outlined { font-family: Manrope, system-ui, sans-serif; background: #FFFFFF; color: #1C1F24; border: 1px solid #D5D9DE; border-radius: 10px; padding: 10px 17px; font-size: 15px; font-weight: 700; cursor: pointer; transition: border-color 160ms; } .ds-btn-outlined:hover { border-color: #1C1F24; } .ds-btn-outlined:active { transform: translateY(1px); } .ds-btn-outlined:focus-visible { outline: 2px solid #2F6E50; outline-offset: 2px; }"
+    },
+    {
+      "name": "Day Tabs",
+      "kind": "chip",
+      "refersTo": "day-tab",
+      "description": "Pill tabs choosing the day in the slot list; selected is an ink fill.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button class=\"ds-tab\" role=\"tab\" aria-selected=\"true\">Today</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Tomorrow</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Fri, Oct 16</button></div>",
+      "css": ".ds-tabs { display: flex; gap: 6px; } .ds-tab { font-family: Manrope, system-ui, sans-serif; border: 0; border-radius: 999px; padding: 8px 14px; font-size: 14px; font-weight: 700; background: #FFFFFF; color: #1C1F24; box-shadow: inset 0 0 0 1px #D5D9DE; cursor: pointer; } .ds-tab:hover { box-shadow: inset 0 0 0 1px #1C1F24; } .ds-tab[aria-selected=\"true\"] { background: #1C1F24; color: #fff; box-shadow: none; } .ds-tab:focus-visible { outline: 2px solid #2F6E50; outline-offset: 2px; }"
+    },
+    {
+      "name": "Slot List",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "A panel list of slot rows with a row Book button; the picked row turns Green Wash and its button reads Selected.",
+      "html": "<ul class=\"ds-list\"><li class=\"ds-row\"><span class=\"ds-time\">4:15 PM</span><span class=\"ds-status\">1 seller waiting</span><button class=\"ds-rowbtn\">Book</button></li><li class=\"ds-row ds-on\"><span class=\"ds-time\">4:30 PM</span><span class=\"ds-status\">Open</span><button class=\"ds-rowbtn\" aria-pressed=\"true\">Selected</button></li></ul>",
+      "css": ".ds-list { font-family: Manrope, system-ui, sans-serif; list-style: none; margin: 0; padding: 0; background: #FFFFFF; border: 1px solid #E6E8EB; border-radius: 16px; overflow: hidden; color: #1C1F24; font-variant-numeric: tabular-nums; } .ds-row { display: flex; align-items: center; gap: 16px; padding: 12px 18px; } .ds-row + .ds-row { border-top: 1px solid #EEF0F2; } .ds-on { background: #E7F1EC; } .ds-time { width: 92px; font-size: 18px; font-weight: 800; } .ds-status { flex: 1; font-size: 14px; color: #5B6270; } .ds-on .ds-status { color: #1F5A3F; } .ds-rowbtn { font-family: Manrope, system-ui, sans-serif; border: 0; border-radius: 8px; padding: 8px 12px; min-height: 40px; font-size: 14px; font-weight: 700; background: #FFFFFF; color: #1C1F24; box-shadow: inset 0 0 0 1px #D5D9DE; cursor: pointer; } .ds-rowbtn:hover { box-shadow: inset 0 0 0 1px #1C1F24; } .ds-rowbtn[aria-pressed=\"true\"] { background: #2F6E50; color: #fff; box-shadow: none; } .ds-rowbtn:focus-visible { outline: 2px solid #2F6E50; outline-offset: 2px; }"
+    },
+    {
+      "name": "Handle Input",
+      "kind": "input",
+      "refersTo": "input-text",
+      "description": "Text field with label above and muted helper below.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-label\">Your handle</span><input class=\"ds-input\" placeholder=\"e.g. maya_k\"><span class=\"ds-help\">Shown publicly. 3–20 letters, numbers or underscores.</span></label>",
+      "css": ".ds-field { font-family: Manrope, system-ui, sans-serif; display: grid; gap: 6px; color: #1C1F24; } .ds-label { font-size: 14px; font-weight: 700; } .ds-input { font-family: Manrope, system-ui, sans-serif; font-size: 16px; padding: 12px 14px; background: #FFFFFF; color: #1C1F24; border: 1px solid #D5D9DE; border-radius: 10px; caret-color: #2F6E50; } .ds-input:hover { border-color: #5B6270; } .ds-input:focus-visible { outline: none; border-color: #2F6E50; box-shadow: inset 0 0 0 1px #2F6E50; } .ds-help { font-size: 12px; color: #5B6270; }"
+    },
+    {
+      "name": "Role Choice",
+      "kind": "custom",
+      "refersTo": "role-choice",
+      "description": "Two equal pressed-button tiles for Seller / Buyer; chosen tile gets a 2px green ring in the same box.",
+      "html": "<div class=\"ds-roles\"><button class=\"ds-role\" aria-pressed=\"true\"><b>Seller</b><span>Pitch a product you see 30s before</span></button><button class=\"ds-role\" aria-pressed=\"false\"><b>Buyer</b><span>Play a secret persona and push back</span></button></div>",
+      "css": ".ds-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .ds-role { font-family: Manrope, system-ui, sans-serif; display: grid; justify-items: start; gap: 2px; text-align: left; padding: 12px 14px; border: 0; border-radius: 10px; background: #FFFFFF; color: #1C1F24; box-shadow: inset 0 0 0 1px #D5D9DE; cursor: pointer; transition: box-shadow 160ms; } .ds-role b { font-size: 15px; font-weight: 800; } .ds-role span { font-size: 13px; color: #5B6270; } .ds-role:hover { box-shadow: inset 0 0 0 2px #5B6270; } .ds-role[aria-pressed=\"true\"] { box-shadow: inset 0 0 0 2px #2F6E50; } .ds-role:focus-visible { outline: 2px solid #2F6E50; outline-offset: 2px; }"
+    },
+    {
+      "name": "Site Header",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Sticky white bar: 60 mark, anchor links, green Book a seat.",
+      "html": "<header class=\"ds-header\"><a class=\"ds-brand\" href=\"#\"><span class=\"ds-mark\">60</span>PitchDrill</a><nav class=\"ds-nav\"><a href=\"#\">Watch</a><a href=\"#\">Play</a><a href=\"#\">How it works</a></nav><a class=\"ds-cta\" href=\"#\">Book a seat</a></header>",
+      "css": ".ds-header { font-family: Manrope, system-ui, sans-serif; display: flex; align-items: center; gap: 24px; padding: 12px 24px; background: #FFFFFF; border-bottom: 1px solid #E6E8EB; } .ds-brand { display: flex; align-items: center; gap: 10px; color: #1C1F24; text-decoration: none; font-size: 19px; font-weight: 800; letter-spacing: -0.01em; } .ds-mark { width: 30px; height: 30px; border-radius: 8px; background: #2F6E50; color: #fff; display: grid; place-items: center; font-size: 15px; font-weight: 800; } .ds-nav { display: flex; gap: 4px; flex: 1; } .ds-nav a { padding: 10px 14px; border-radius: 8px; color: #5B6270; text-decoration: none; font-size: 15px; font-weight: 600; } .ds-nav a:hover { color: #1C1F24; background: #EEF0EE; } .ds-nav a:focus-visible, .ds-cta:focus-visible { outline: 2px solid #2F6E50; outline-offset: 2px; } .ds-cta { padding: 11px 18px; border-radius: 10px; background: #2F6E50; color: #fff; text-decoration: none; font-size: 15px; font-weight: 700; transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-cta:hover { background: #1F5A3F; }"
+    },
+    {
+      "name": "Watch Empty State",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Dashed placeholder where live tiles will go: status line, next time as the hero numeral, one sentence.",
+      "html": "<div class=\"ds-empty\"><p class=\"ds-empty-status\">Nothing live right now</p><p class=\"ds-empty-time\">Today 4:15 PM</p><p class=\"ds-empty-note\">Next rounds start in 12 min. Come back to watch, or take a seat.</p></div>",
+      "css": ".ds-empty { font-family: Manrope, system-ui, sans-serif; display: grid; place-items: center; gap: 10px; text-align: center; padding: 32px; border: 2px dashed #D5D9DE; border-radius: 12px; color: #1C1F24; font-variant-numeric: tabular-nums; } .ds-empty p { margin: 0; } .ds-empty-status { font-size: 14px; font-weight: 700; color: #5B6270; } .ds-empty-time { font-size: 44px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; } .ds-empty-note { max-width: 38ch; font-size: 17px; line-height: 1.55; color: #5B6270; }"
+    },
+    {
+      "name": "Numbered Steps",
+      "kind": "custom",
+      "refersTo": "step-number",
+      "description": "How a round runs: Green Wash number discs, bold title, muted line, Soft Hairline dividers.",
+      "html": "<ol class=\"ds-steps\"><li><span class=\"ds-n\">1</span><div><b>Book a seat</b><p>Pick a slot, choose seller or buyer, type a handle.</p></div></li><li><span class=\"ds-n\">2</span><div><b>Read your brief</b><p>30 seconds before, each side sees its brief.</p></div></li></ol>",
+      "css": ".ds-steps { font-family: Manrope, system-ui, sans-serif; list-style: none; margin: 0; padding: 0; background: #FFFFFF; border: 1px solid #E6E8EB; border-radius: 16px; overflow: hidden; color: #1C1F24; } .ds-steps li { display: flex; gap: 14px; padding: 16px 18px; } .ds-steps li + li { border-top: 1px solid #EEF0F2; } .ds-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: #E7F1EC; color: #1F5A3F; display: grid; place-items: center; font-size: 14px; font-weight: 800; } .ds-steps b { font-size: 15px; font-weight: 700; } .ds-steps p { margin: 0; font-size: 14px; line-height: 1.5; color: #5B6270; }"
+    },
+    {
+      "name": "Verdict Chips (not yet implemented)",
+      "kind": "chip",
+      "refersTo": "verdict-sold",
+      "description": "Mockup-specified for past-round rows (TASK-012): Sold in Green Wash, Not sold in Sand. Colors are tokens; sizes provisional until built.",
+      "html": "<span class=\"ds-verdict ds-sold\">Sold</span> <span class=\"ds-verdict ds-notsold\">Not sold</span>",
+      "css": ".ds-verdict { font-family: Manrope, system-ui, sans-serif; display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; } .ds-sold { background: #E7F1EC; color: #1F5A3F; } .ds-notsold { background: #F1EDE4; color: #5E4511; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Study Hall",
+    "overview": "**Creative North Star: \"The Study Hall\"**\n\nPitchDrill is a quiet place to learn selling, built like an online chess archive: a light grey ground, white panels drawn with hairlines, near-black ink, and one deep green that means \"act\" and \"Sold\". Watching and playing get equal weight, so the home sits as two panels side by side (Watch at 7 parts, Play at 5) above a slot list and a numbered explainer. Nothing performs. The tension of the round lives in the rounds themselves, not in the chrome around them.\n\nDensity is medium and calm: generous panel padding, list rows split by soft hairlines, a single sans (Manrope) at heavy weights for anything you need to find fast (times, headings, the next start) and regular weight for reading. Numbers are tabular everywhere so clocks and times never jitter. Motion is limited to short state transitions (160ms) and a 1px press; reduced motion turns it off.\n\nThis system replaces the shopping-channel broadcast identity, which the product rejected as sales-y. Saturated studio fields, condensed capitals, straps and price bursts are not part of this world.",
+    "keyCharacteristics": [
+      "Light grey ground, white hairline panels, 16px panel corners.",
+      "One green for actions, selection and \"Sold\"; everything else is ink, muted grey or a pale tint.",
+      "Manrope only, heavy for scanning, regular for reading, tabular numerals throughout.",
+      "Flat: depth is the ground-to-panel step and 1px lines, never shadows.",
+      "Status is never carried by color alone (LIVE is red text plus a dot; selection changes label text too)."
+    ],
+    "rules": [
+      {
+        "name": "The One Green Rule",
+        "body": "Green is the only saturated color at rest. It marks what you can do (book, copy, select) and the Sold verdict, and nothing else.",
+        "section": "colors"
+      },
+      {
+        "name": "The Not-Color-Alone Rule",
+        "body": "Every status carries text or shape as well as color: LIVE is red text with a dot, the selected slot's button reads \"Selected\", the chosen role gets a 2px ring.",
+        "section": "colors"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "No uppercase, no tracking-out, no condensed faces. Labels and buttons read like sentences.",
+        "section": "typography"
+      },
+      {
+        "name": "The Time Is the Hero Rule",
+        "body": "When something should be big, make it a time or countdown in tabular Manrope 800.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline Rule",
+        "body": "Separate with a 1px line or a ground-to-panel step. If something needs to feel raised, it is the wrong component.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** put content on white panels (1px Hairline, 16px corners) over the Hall Grey ground.",
+      "**Do** use Study Green for actions, selection and Sold only; text on green is white.",
+      "**Do** set times and countdowns in tabular Manrope 800, and let a time be the largest thing on a surface.",
+      "**Do** pair every status color with text or a shape (LIVE text plus dot, \"Selected\", a 2px ring).",
+      "**Do** keep custom-control borders as inset rings so selected and unselected states have the same box.",
+      "**Do** keep motion to 160ms state transitions and honor reduced motion."
+    ],
+    "donts": [
+      "**Don't** bring back the shopping-channel broadcast vocabulary: saturated studio fields, condensed uppercase type, lower-third straps, price bursts or on-air chrome.",
+      "**Don't** add shadows or elevation to panels, cards or buttons.",
+      "**Don't** use a second accent for actions; sand and the role tints are for verdicts and seats, not buttons.",
+      "**Don't** use red as a fill or for emphasis; it is LIVE and errors only.",
+      "**Don't** uppercase or letter-space labels."
+    ]
+  }
+}
