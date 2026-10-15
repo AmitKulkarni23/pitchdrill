@@ -25,11 +25,11 @@ Done before these specs (phase 1): booking core, ticket lookup, slots, CDK stack
 ## Frontend
 
 - ~~[TASK-014 — Scaffold the Next.js frontend](frontend/014-scaffold.md) · depends on: 002~~ (done early in the impeccable design session; the home page replaced the placeholder)
-- [TASK-015 — Schedule and booking flow](frontend/015-schedule-and-booking.md) · depends on: 001, 014 · **mostly built** in the impeccable session (guide, booking desk, ticket link, calendar file). Remaining: switch the guide to `GET /slots` counts once 001 lands (drop the local `scheduleSlots` fallback in TASK-021), and verify booking against the dev server (002)
+- [TASK-015 — Schedule and booking flow](frontend/015-schedule-and-booking.md) · depends on: 001, 014 · **mostly built**: the Study Hall home (`components/home/`) has the slot list, inline Play booking panel, ticket link and calendar file. Remaining: switch the guide to `GET /slots` counts once 001 lands (drop the local `scheduleSlots` fallback in TASK-021), and verify booking against the dev server (002)
 - [TASK-016 — Ticket page and "My bookings"](frontend/016-ticket-page.md) · depends on: 009, 015
 - [TASK-017 — Participant arena (split screen, brief, timer)](frontend/017-participant-arena.md) · depends on: 007, 009, 016
-- [TASK-018 — Live rounds, spectator view, chat and voting](frontend/018-spectator-live.md) · depends on: 010, 011, 017
-- [TASK-019 — Replay page, comments, reports and replay feed](frontend/019-replays.md) · depends on: 012, 013, 018
+- [TASK-018 — Live rounds, spectator view, chat and voting](frontend/018-spectator-live.md) · depends on: 010, 011, 017 · also fills the home Watch panel with live tiles (see the approved mockup in CLAUDE.md → Design System)
+- [TASK-019 — Replay page, comments, reports and replay feed](frontend/019-replays.md) · depends on: 012, 013, 018 · the feed is the home "Past rounds" list from the approved mockup
 - [TASK-020 — Vercel deployment](frontend/020-vercel-deploy.md) · depends on: 014
 
 ## Go Live

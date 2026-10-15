@@ -12,7 +12,8 @@ Each day has scheduled time slots. People book a slot as a seller or a buyer wit
 - **One minute, no more**: The constraint is the product. Rounds are short, sharp and repeatable.
 - **Asymmetric information**: Seller and buyer get different briefs, so every round has real tension.
 - **Practice in public**: Live audience, replays, votes and comments are how people improve.
-- **Flow**: Pick slot → Book as seller or buyer (handle) → Get ticket link + opponent → Join arena → Read brief → 60s round → Votes + comments.
+- **Watch before you book**: the home shows live rounds and every past round; booking is one click away, never the only door.
+- **Flow**: Land on home (watch live or past rounds) → Pick slot → Book as seller or buyer (handle) → Get ticket link + opponent → Join arena → Read brief → 60s round → Votes + comments.
 
 ## Tech Stack
 
@@ -132,11 +133,11 @@ vercel project protection pitchdrill --json
 
 ## Design System
 
-The visual system is the **shopping-channel broadcast** world documented in `DESIGN.md` (tokens, components, rules) with product context in `PRODUCT.md`; surface strategy lives in `.impeccable/surfaces/`. Design work goes through the impeccable skill.
+The visual system is **Study Hall**: a calm, light learning app (online-chess-archive feel), documented in `DESIGN.md` with product context in `PRODUCT.md`; surface strategy lives in `.impeccable/surfaces/`. Design work goes through the impeccable skill. Approved home mockup: https://claude.ai/artifact/URDQkpThdn3PB9Szwqn8VD
 
-- **Tokens**: `frontend/src/config/tokens.ts` (plain module, safe for server components). Never import tokens from `theme.ts` (a `"use client"` module) in server components: the values arrive as empty client references.
+- **Tokens**: `frontend/src/config/tokens.ts` (`hall` palette, `panel`, `font`; plain module, safe for server components). Never import tokens from `theme.ts` (a `"use client"` module) in server components: the values arrive as empty client references.
 - **MUI theme**: `frontend/src/config/theme.ts`; components use MUI with `sx` props, no CSS Modules, no Tailwind.
-- **Broadcast components**: `frontend/src/components/broadcast/` (Strap, OnAirClock, ExampleRound, Rundown, ProgramGuide, BookingDesk, TopBar).
+- **Home components**: `frontend/src/components/home/` (SiteHeader, HomeBoard, PlayPanel, HowItWorks).
 
 ## Architecture
 
