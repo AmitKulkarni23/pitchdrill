@@ -27,12 +27,15 @@ test("timeLabel: should format in the given time zone", () => {
   expect(timeLabel("2026-10-14T23:45:00.000Z", "America/Los_Angeles")).toBe("4:45 PM");
 });
 
-test("waitingLabel: should describe counts", () => {
+test("waitingLabel: should describe counts and full seats", () => {
+  const stats = (sellers: number, buyers: number, waitingSellers: number, waitingBuyers: number, rounds: number) => ({ sellers, buyers, waitingSellers, waitingBuyers, rounds });
   expect(waitingLabel(null)).toBe("Open");
-  expect(waitingLabel({ waitingSellers: 1, waitingBuyers: 0, rounds: 0 })).toBe("1 seller waiting for a buyer");
-  expect(waitingLabel({ waitingSellers: 2, waitingBuyers: 0, rounds: 1 })).toBe("2 sellers waiting for a buyer");
-  expect(waitingLabel({ waitingSellers: 0, waitingBuyers: 1, rounds: 0 })).toBe("1 buyer waiting for a seller");
-  expect(waitingLabel({ waitingSellers: 0, waitingBuyers: 0, rounds: 3 })).toBe("3 rounds booked · open");
+  expect(waitingLabel(stats(1, 0, 1, 0, 0))).toBe("1 seller waiting for a buyer");
+  expect(waitingLabel(stats(3, 1, 2, 0, 1))).toBe("2 sellers waiting for a buyer");
+  expect(waitingLabel(stats(0, 1, 0, 1, 0))).toBe("1 buyer waiting for a seller");
+  expect(waitingLabel(stats(3, 3, 0, 0, 3))).toBe("3 rounds booked · open");
+  expect(waitingLabel(stats(4, 2, 2, 0, 2))).toBe("Seller seats full · buyers wanted");
+  expect(waitingLabel(stats(4, 4, 0, 0, 4))).toBe("Full");
 });
 
 test("slotLabel: should drop the day for today's slots", () => {

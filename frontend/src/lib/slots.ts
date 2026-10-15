@@ -9,6 +9,8 @@ const STEP_MINUTES = 15;
 const CLOSES_BEFORE_MS = 5 * 60_000;
 const WINDOW_DAYS = 7;
 export const ROUND_SECONDS = 60;
+/** Seats per role per slot; mirrors MAX_PER_ROLE in backend/src/lib/bookings.ts. */
+export const MAX_PER_ROLE = 4;
 
 const pacificParts = new Intl.DateTimeFormat("en-US", {
   timeZone: SLOT_TZ,
@@ -79,6 +81,9 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 /** What the guide says about a slot; null stats means counts are unavailable. */
 export function waitingLabel(stats: Omit<SlotWithStats, "slotId"> | null): string {
   if (!stats) return "Open";
+  if (isFull(stats)) return "Full";
+  if (stats.sellers >= MAX_PER_ROLE) return "Seller seats full · buyers wanted";
+  if (stats.buyers >= MAX_PER_ROLE) return "Buyer seats full · sellers wanted";
   if (stats.waitingSellers > 0) return `${plural(stats.waitingSellers, "seller")} waiting for a buyer`;
   if (stats.waitingBuyers > 0) return `${plural(stats.waitingBuyers, "buyer")} waiting for a seller`;
   return stats.rounds > 0 ? `${plural(stats.rounds, "round")} booked · open` : "Open";
@@ -97,3 +102,6 @@ export function countdown(ms: number): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return h ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
 }
+
+export const isFull = (stats: Omit<SlotWithStats, "slotId"> | null): boolean =>
+  !!stats && stats.sellers >= MAX_PER_ROLE && stats.buyers >= MAX_PER_ROLE;

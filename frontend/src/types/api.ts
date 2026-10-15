@@ -4,6 +4,8 @@ export type Role = "seller" | "buyer";
 
 export interface SlotWithStats {
   slotId: string;
+  sellers: number;
+  buyers: number;
   waitingSellers: number;
   waitingBuyers: number;
   rounds: number;

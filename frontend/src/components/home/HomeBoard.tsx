@@ -1,15 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Box, ButtonBase, Typography } from "@mui/material";
 import { useNow, useTimeZone } from "@/hooks/useClock";
 import { api } from "@/lib/api";
-import { countdown, dayLabel, groupSlotsByLocalDay, scheduleSlots, slotLabel, timeLabel, waitingLabel } from "@/lib/slots";
+import { countdown, dayLabel, groupSlotsByLocalDay, isFull, MAX_PER_ROLE, scheduleSlots, slotLabel, timeLabel, waitingLabel } from "@/lib/slots";
 import { hall, panel } from "@/config/tokens";
 import type { SlotWithStats } from "@/types/api";
+import { LiveTile, type LiveRound } from "./LiveTile";
 import { PlayPanel } from "./PlayPanel";
 
 type Slot = { slotId: string; stats: Omit<SlotWithStats, "slotId"> | null };
+
+// ponytail: `?demo` fills Watch with sample rounds until GET /rounds/live (TASK-009) exists; delete with TASK-018.
+const noop = () => () => {};
+const useDemo = () => useSyncExternalStore(noop, () => new URLSearchParams(location.search).has("demo"), () => false);
+const DEMO = [
+  ["Noise-cancelling headphones", "maya_k", "dan_r"],
+  ["Standing desk converter", "priya_s", "tom_b"],
+  ["Cold brew subscription", "jordan_l", "sam_w"],
+  ["Password manager for families", "aisha_m", "leo_t"],
+] as const;
+function demoRounds(now: number): LiveRound[] {
+  const minute = now - (now % 60_000);
+  return DEMO.map(([product, sellerHandle, buyerHandle], i) => ({ roundId: `demo-${i}`, product, sellerHandle, buyerHandle, endsAt: minute + 60_000 - i * 4_000 }));
+}
 
 const row = { display: "flex", flexWrap: "wrap", gap: 2.5, alignItems: "stretch" } as const;
 
@@ -20,6 +35,7 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
   const [remote, setRemote] = useState<SlotWithStats[] | "unavailable" | null>(null);
   const [day, setDay] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
+  const demo = useDemo();
 
   useEffect(() => {
     api
@@ -43,8 +59,10 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
     ? remote.filter((s) => Date.parse(s.slotId) - 5 * 60_000 >= now).map(({ slotId, ...stats }) => ({ slotId, stats }))
     : scheduleSlots(now).map((slotId) => ({ slotId, stats: null }));
   // A picked slot can close while the page sits open; fall back to the next one.
-  const selected = slots.find((s) => s.slotId === picked)?.slotId ?? slots[0]?.slotId ?? null;
+  const selected = slots.find((s) => s.slotId === picked && !isFull(s.stats))?.slotId ?? slots.find((s) => !isFull(s.stats))?.slotId ?? null;
   const next = slots[0]?.slotId;
+  const live = demo ? demoRounds(now) : [];
+  const liveSlot = new Date(now - (now % (15 * 60_000))).toISOString();
   const days = groupSlotsByLocalDay(slots, timeZone);
   const active = days.find((d) => d.dayKey === day) ?? days[0];
 
@@ -57,23 +75,45 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
     <>
       <Box sx={row}>
         <Box component="section" id="watch" aria-labelledby="watch-h" sx={{ ...panel, flex: "7 1 520px", minWidth: 0, p: { xs: 2, sm: 2.75 }, display: "grid", gap: 2.25, gridTemplateRows: "auto 1fr", scrollMarginTop: 80 }}>
-          <Typography id="watch-h" variant="h2">
-            Watch
-          </Typography>
-          {/* ponytail: always the empty state until GET /rounds/live (TASK-009) and the spectator view (TASK-018) exist. */}
-          <Box sx={{ border: `2px dashed ${hall.field}`, borderRadius: "12px", p: { xs: 3, sm: 4 }, display: "grid", placeItems: "center", alignContent: "center", gap: 1.25, textAlign: "center" }}>
-            <Typography sx={{ fontSize: 14, fontWeight: 700, color: hall.muted }}>Nothing live right now</Typography>
-            {next ? (
-              <>
-                <Typography sx={{ fontSize: { xs: 36, sm: 44 }, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>{slotLabel(next, now, timeZone)}</Typography>
-                <Typography sx={{ color: hall.muted, maxWidth: "38ch" }}>
-                  Next rounds start in {countdown(Date.parse(next) - now)}. Come back to watch, or take a seat.
-                </Typography>
-              </>
-            ) : (
-              <Typography sx={{ color: hall.muted }}>Rounds run every 15 minutes, 4:00 to 8:45 PM Pacific.</Typography>
+          <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1.5, flexWrap: "wrap" }}>
+            <Typography id="watch-h" variant="h2">
+              Watch
+            </Typography>
+            {live.length > 0 && (
+              <Typography variant="body2" sx={{ color: hall.muted }}>
+                {timeLabel(liveSlot, timeZone)} slot · {live.length} {live.length === 1 ? "round" : "rounds"} live{demo && " · sample data"}
+              </Typography>
             )}
           </Box>
+          {live.length > 0 ? (
+            <Box sx={{ display: "grid", gap: 2.25, alignContent: "start" }}>
+              {/* At most MAX_PER_ROLE rounds per slot, so a 2×2 grid always fits; one round gets the full width. */}
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: live.length === 1 ? "1fr" : "repeat(2, minmax(0, 1fr))" }, gap: 2, rowGap: 2.5 }}>
+                {live.slice(0, MAX_PER_ROLE).map((r) => (
+                  <LiveTile key={r.roundId} round={r} now={now} />
+                ))}
+              </Box>
+              {next && (
+                <Typography variant="body2" sx={{ color: hall.muted, pt: 1.75, borderTop: `1px solid ${hall.lineSoft}` }}>
+                  Up next: {slotLabel(next, now, timeZone)} slot
+                </Typography>
+              )}
+            </Box>
+          ) : (
+            <Box sx={{ border: `2px dashed ${hall.field}`, borderRadius: "12px", p: { xs: 3, sm: 4 }, display: "grid", placeItems: "center", alignContent: "center", gap: 1.25, textAlign: "center" }}>
+              <Typography sx={{ fontSize: 14, fontWeight: 700, color: hall.muted }}>Nothing live right now</Typography>
+              {next ? (
+                <>
+                  <Typography sx={{ fontSize: { xs: 36, sm: 44 }, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>{slotLabel(next, now, timeZone)}</Typography>
+                  <Typography sx={{ color: hall.muted, maxWidth: "38ch" }}>
+                    Next rounds start in {countdown(Date.parse(next) - now)}. Come back to watch, or take a seat.
+                  </Typography>
+                </>
+              ) : (
+                <Typography sx={{ color: hall.muted }}>Rounds run every 15 minutes, 4:00 to 8:45 PM Pacific.</Typography>
+              )}
+            </Box>
+          )}
         </Box>
 
         <PlayPanel slotId={selected} timeZone={timeZone} now={now} />
@@ -122,6 +162,7 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
               <Box role="tabpanel" component="ul" sx={{ ...panel, m: 0, p: 0, listStyle: "none", overflow: "hidden" }}>
                 {active.slots.map((s, i) => {
                   const on = s.slotId === selected;
+                  const full = isFull(s.stats);
                   const label = waitingLabel(s.stats);
                   return (
                     <Box component="li" key={s.slotId} sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2, px: 2.25, py: 1.5, borderTop: i ? `1px solid ${hall.lineSoft}` : 0, bgcolor: on ? hall.greenTint : "transparent" }}>
@@ -129,6 +170,7 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
                       <Box sx={{ flex: "999 1 180px", fontSize: 14, color: on ? hall.greenDeep : hall.muted }}>{label}</Box>
                       <ButtonBase
                         aria-pressed={on}
+                        disabled={full}
                         aria-label={`Book ${timeLabel(s.slotId, timeZone)}, ${label}`}
                         onClick={() => pick(s.slotId)}
                         sx={{
@@ -142,9 +184,10 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
                           color: on ? "#fff" : hall.ink,
                           boxShadow: on ? "none" : `inset 0 0 0 1px ${hall.field}`,
                           "&:hover": { boxShadow: on ? "none" : `inset 0 0 0 1px ${hall.ink}` },
+                          "&.Mui-disabled": { color: hall.muted, bgcolor: hall.chip, boxShadow: "none" },
                         }}
                       >
-                        {on ? "Selected" : "Book"}
+                        {full ? "Full" : on ? "Selected" : "Book"}
                       </ButtonBase>
                     </Box>
                   );
