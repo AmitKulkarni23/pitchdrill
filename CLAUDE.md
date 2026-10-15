@@ -68,7 +68,7 @@ DynamoDB single table `pitchdrill-main` (full layout in `docs/system_specs/data_
 - Slots run every 15 minutes, 4:00–8:45 PM `America/Los_Angeles` (20 per day). Slot IDs are UTC ISO start times; the frontend shows local time.
 - Slots are bookable from 7 days ahead until 5 minutes before start.
 - Handles are 3–20 letters, numbers or underscores, unique per slot (case-insensitive, either role).
-- A slot holds any number of rounds. Pairing is first-come-first-serve at booking: a new booking is paired with the oldest unpaired booking of the opposite role in that slot, creating a round. Pairing uses a conditional write so one booking is never paired twice.
+- A slot holds at most 4 rounds: 4 seller seats and 4 buyer seats, enforced in the booking transaction (`409 slot_full`). Pairing is first-come-first-serve at booking: a new booking is paired with the oldest unpaired booking of the opposite role in that slot, creating a round. Pairing uses a conditional write so one booking is never paired twice.
 - Unpaired bookings wait; if still unpaired at slot time they are told no opponent was found.
 - All rounds in a slot start together; the arena page lists live rounds for spectators to pick from.
 - Briefs are generated via OpenRouter when a round is paired and revealed to each side ~30s before the round. The buyer's persona is never shown to the seller.

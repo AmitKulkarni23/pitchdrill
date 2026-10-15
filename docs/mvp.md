@@ -37,6 +37,6 @@
 
 ## Open Questions
 
-- Is there a cap on rounds per slot (IVS cost)?
+- ~~Is there a cap on rounds per slot (IVS cost)?~~ Decided 2026-10-14: 4 sellers + 4 buyers per slot, so at most 4 rounds.
 - Can one handle book more than one slot per day?
 - Minimum age / content rules for live video?

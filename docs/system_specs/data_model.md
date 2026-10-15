@@ -31,7 +31,7 @@ erDiagram
 
 | SK | Attributes | Written by |
 |---|---|---|
-| `STATS` | `waitingSellers`, `waitingBuyers`, `rounds` (numbers, `ADD`) | `POST /bookings`, `SlotTick` sweep |
+| `STATS` | `sellers`, `buyers` (seats taken, capped at 4 each by a condition on the `ADD`; live), `waitingSellers`, `waitingBuyers`, `rounds` (numbers, `ADD`; TASK-001) | `POST /bookings`, `SlotTick` sweep |
 | `BOOKING#<bookingId>` | `slotId`, `bookingId`, `handle`, `role` (`seller`\|`buyer`), `createdAt`, `status` (`waiting`\|`paired`\|`no_opponent`), `roundId?`, `opponentHandle?` | `POST /bookings`, `SlotTick` |
 | `WAIT#<role>#<createdAt>#<bookingId>` | `bookingId`, `handle` | `POST /bookings` (put/delete), `SlotTick` (delete) |
 | `HANDLE#<lowercase handle>` | — (uniqueness guard, conditional put) | `POST /bookings` |
@@ -100,6 +100,7 @@ Query `GSI1PK = "REPLAY"`, `ScanIndexForward = false`, `Limit` + `ExclusiveStart
 | Field | Rule |
 |---|---|
 | `handle` | `^[A-Za-z0-9_]{3,20}$`, unique per slot, case-insensitive |
+| seats per slot | at most 4 sellers and 4 buyers (so at most 4 rounds); the 5th booking of a role gets `409 slot_full` |
 | `nickname` | 2–20 chars, trimmed, letters/numbers/spaces/`_-.` |
 | `voterId` | UUID v4 |
 | comment `text` | 1–500 chars, trimmed |

@@ -49,9 +49,17 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("bookings", () => {
 
   test("concurrent buyers never share a seller", async () => {
     const s = slots[3]!;
-    for (let i = 0; i < 5; i++) await book(s, `seller${i}`, "seller");
-    const buyers = await Promise.all([0, 1, 2, 3, 4].map((i) => book(s, `buyer${i}`, "buyer")));
-    expect(new Set(buyers.map((b) => b.booking.opponentHandle)).size).toBe(5);
+    for (let i = 0; i < 4; i++) await book(s, `seller${i}`, "seller");
+    const buyers = await Promise.all([0, 1, 2, 3].map((i) => book(s, `buyer${i}`, "buyer")));
+    expect(new Set(buyers.map((b) => b.booking.opponentHandle)).size).toBe(4);
+  });
+
+  test("caps a slot at 4 sellers and 4 buyers, even when booked at once", async () => {
+    const s = slots[5]!;
+    const sellers = await Promise.allSettled([0, 1, 2, 3, 4, 5].map((i) => book(s, `cap_s${i}`, "seller")));
+    expect(sellers.filter((r) => r.status === "fulfilled")).toHaveLength(4);
+    expect(sellers.filter((r) => r.status === "rejected").map((r) => (r as PromiseRejectedResult).reason.code)).toEqual(["slot_full", "slot_full"]);
+    expect((await book(s, "cap_b0", "buyer")).booking.roundId).toBeDefined();
   });
 
   test("rejects bad input and bad tickets", async () => {

@@ -20,8 +20,8 @@ Read and follow these before writing ANY code:
 2. Pairing MUST also write `PK=SLOT#<slotId>`, `SK=ROUND#<roundId>` containing only `roundId`.
 3. Bookings MUST carry `status`: `"waiting"` when queued, `"paired"` when paired (both the new booking and the opponent's).
 4. Every booking transaction MUST update `SLOT#<slotId>` / `STATS` with `ADD`: queued → `waiting<Role>s +1`; paired → `waiting<OtherRole>s -1`, `rounds +1`.
-5. The handle guard `Put` MUST stay the first item in the transaction (the handler reads `CancellationReasons[0]` to detect `handle_taken`).
-6. `GET /slots` MUST return `{ slots: [{ slotId, waitingSellers, waitingBuyers, rounds }] }` for every bookable slot, soonest first, with zeros where no `STATS` item exists.
+5. The handle guard `Put` MUST stay the first item in the transaction (the handler reads `CancellationReasons[0]` to detect `handle_taken`), and the `STATS` `Update` MUST stay second with its seat-cap condition (`CancellationReasons[1]` → `slot_full`, already built). Fold the waiting/round counters into that same `Update`.
+6. `GET /slots` MUST return `{ slots: [{ slotId, sellers, buyers, waitingSellers, waitingBuyers, rounds }] }` for every bookable slot, soonest first, with zeros where no `STATS` item exists.
 7. `GET /slots` MUST read stats with `BatchGetItem` in chunks of at most 100 keys and MUST retry `UnprocessedKeys`.
 8. `GET /ticket` MUST include `status` in the returned booking.
 

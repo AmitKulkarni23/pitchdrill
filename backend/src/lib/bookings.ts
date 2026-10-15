@@ -11,6 +11,8 @@ import { MetricUnit } from "@aws-lambda-powertools/metrics";
 export type Role = "seller" | "buyer";
 const HANDLE_RE = /^[A-Za-z0-9_]{3,20}$/;
 const MAX_ATTEMPTS = 5;
+/** At most this many sellers and this many buyers per slot, so at most this many rounds. */
+export const MAX_PER_ROLE = 4;
 
 export interface Booking {
   slotId: string;
@@ -63,6 +65,17 @@ export async function createBooking(input: { slotId: unknown; handle: unknown; r
           ConditionExpression: "attribute_not_exists(PK)",
         },
       },
+      {
+        // Seat cap: one counter per role on the slot's STATS item, checked in the same transaction.
+        Update: {
+          TableName: TABLE,
+          Key: { PK: pk, SK: "STATS" },
+          UpdateExpression: "ADD #role :one",
+          ConditionExpression: "attribute_not_exists(#role) OR #role < :max",
+          ExpressionAttributeNames: { "#role": `${role}s` },
+          ExpressionAttributeValues: { ":one": 1, ":max": MAX_PER_ROLE },
+        },
+      },
       { Put: { TableName: TABLE, Item: { PK: `TICKET#${hashTicket(ticket)}`, SK: "TICKET", slotId, bookingId: booking.bookingId } } },
       { Put: { TableName: TABLE, Item: { PK: pk, SK: `BOOKING#${booking.bookingId}`, ...mine } } },
     ];
@@ -112,6 +125,8 @@ export async function createBooking(input: { slotId: unknown; handle: unknown; r
       const reasons = e.CancellationReasons ?? [];
       if (reasons[0]?.Code === "ConditionalCheckFailed")
         throw new UserError(409, "handle_taken", "That handle is already booked in this slot.");
+      if (reasons[1]?.Code === "ConditionalCheckFailed")
+        throw new UserError(409, "slot_full", `All ${MAX_PER_ROLE} ${role} seats in this slot are taken. Try another time.`);
       // Someone else grabbed our opponent (or a transaction conflict): look again.
     }
   }
