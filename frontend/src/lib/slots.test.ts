@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { dayLabel, groupSlotsByLocalDay, scheduleSlots, timeLabel, waitingLabel } from "./slots";
+import { countdown, dayLabel, groupSlotsByLocalDay, scheduleSlots, slotLabel, timeLabel, waitingLabel } from "./slots";
 
 const NOW = Date.parse("2026-10-14T23:30:00.000Z"); // Wed 4:30 PM PDT
 
@@ -33,4 +33,15 @@ test("waitingLabel: should describe counts", () => {
   expect(waitingLabel({ waitingSellers: 2, waitingBuyers: 0, rounds: 1 })).toBe("2 sellers waiting for a buyer");
   expect(waitingLabel({ waitingSellers: 0, waitingBuyers: 1, rounds: 0 })).toBe("1 buyer waiting for a seller");
   expect(waitingLabel({ waitingSellers: 0, waitingBuyers: 0, rounds: 3 })).toBe("3 rounds booked · open");
+});
+
+test("slotLabel: should drop the day for today's slots", () => {
+  expect(slotLabel("2026-10-14T23:45:00.000Z", NOW, "America/Los_Angeles")).toBe("4:45 PM");
+  expect(slotLabel("2026-10-15T23:00:00.000Z", NOW, "America/Los_Angeles")).toBe("Tomorrow 4:00 PM");
+});
+
+test("countdown: should format m:ss, h:mm:ss and clamp at zero", () => {
+  expect(countdown(27 * 60_000 + 4_000)).toBe("27:04");
+  expect(countdown(2 * 3_600_000 + 14 * 60_000 + 30_000)).toBe("2:14:30");
+  expect(countdown(-5_000)).toBe("0:00");
 });

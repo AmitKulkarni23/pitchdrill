@@ -1,23 +1,22 @@
 import type { Metadata } from "next";
-import { Archivo, Public_Sans } from "next/font/google";
+import { Manrope } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { theme } from "@/config/theme";
 import "./globals.css";
 
-const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"], axes: ["wdth"] });
-const publicSans = Public_Sans({ variable: "--font-public-sans", subsets: ["latin"] });
+const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PitchDrill — sixty seconds to sell it",
-  description: "Book a slot, get paired with a stranger, and sell a product you've never seen in sixty seconds while the audience votes.",
+  title: "PitchDrill — learn to sell in sixty seconds",
+  description: "Watch real one-minute sales rounds, then play one yourself as the seller or the buyer. No signup.",
   // Not public yet: keep every page out of search engines.
   robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${archivo.variable} ${publicSans.variable}`}>
+    <html lang="en" className={manrope.variable}>
       <body>
         <AppRouterCacheProvider>
           <ThemeProvider theme={theme}>

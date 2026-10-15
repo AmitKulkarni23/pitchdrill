@@ -1,8 +1,8 @@
-/* Browser surfaces carry the broadcast palette too (values mirror src/config/theme.ts). */
+/* Browser surfaces carry the Study Hall palette too (values mirror src/config/tokens.ts). */
 :root {
-  color-scheme: dark;
-  accent-color: #ffd60a;
-  scrollbar-color: #3a4fe0 #0d1873;
+  color-scheme: light;
+  accent-color: #2f6e50;
+  scrollbar-color: #d5d9de #f7f7f5;
 }
 
 html {
@@ -10,25 +10,24 @@ html {
 }
 
 body {
-  background: #1b2fc4;
-  caret-color: #ffd60a;
+  background: #f7f7f5;
+  caret-color: #2f6e50;
   font-variant-numeric: tabular-nums;
 }
 
 ::selection {
-  background: #ffd60a;
-  color: #0a1050;
+  background: #e7f1ec;
+  color: #1f5a3f;
 }
 
 :focus-visible {
-  outline: 3px solid #ffd60a;
-  outline-offset: 3px;
+  outline: 2px solid #2f6e50;
+  outline-offset: 2px;
 }
 
 a {
-  color: inherit;
-  text-underline-offset: 0.22em;
-  text-decoration-thickness: 2px;
+  color: #2f6e50;
+  text-underline-offset: 0.2em;
 }
 
 @media (prefers-reduced-motion: reduce) {

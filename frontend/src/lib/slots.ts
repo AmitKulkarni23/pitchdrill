@@ -83,3 +83,17 @@ export function waitingLabel(stats: Omit<SlotWithStats, "slotId"> | null): strin
   if (stats.waitingBuyers > 0) return `${plural(stats.waitingBuyers, "buyer")} waiting for a seller`;
   return stats.rounds > 0 ? `${plural(stats.rounds, "round")} booked · open` : "Open";
 }
+
+/** "4:45 PM" today, "Tomorrow 4:45 PM" or "Thu, Oct 16 4:45 PM" otherwise. */
+export function slotLabel(slotId: string, now: number, timeZone: string): string {
+  const day = dayLabel(localDate(Date.parse(slotId), timeZone), now, timeZone);
+  return day === "Today" ? timeLabel(slotId, timeZone) : `${day} ${timeLabel(slotId, timeZone)}`;
+}
+
+/** "27:04" or "2:14:30"; never negative. */
+export function countdown(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const [h, m, sec] = [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60];
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
+}
