@@ -4,6 +4,7 @@ import { hall } from "@/config/tokens";
 const LINKS = [
   { href: "/#watch", label: "Watch" },
   { href: "/#play", label: "Play" },
+  { href: "/#archive", label: "Past rounds" },
   { href: "/#how", label: "How it works" },
 ];
 

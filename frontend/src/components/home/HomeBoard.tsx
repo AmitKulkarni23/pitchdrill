@@ -197,11 +197,11 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
             <Typography sx={{ color: hall.muted }}>No slots are open right now. New slots open daily, 7 days ahead.</Typography>
           )}
 
-          <Typography id="past-h" variant="h2" sx={{ mt: 2 }}>
+          <Typography id="archive" variant="h2" sx={{ mt: 2, scrollMarginTop: 80 }}>
             Past rounds
           </Typography>
           {replays.length ? (
-            <Box component="ul" aria-labelledby="past-h" sx={{ ...panel, m: 0, p: 0, listStyle: "none", overflow: "hidden" }}>
+            <Box component="ul" aria-labelledby="archive" sx={{ ...panel, m: 0, p: 0, listStyle: "none", overflow: "hidden" }}>
               {replays.map((r, i) => (
                 <Box component="li" key={r.roundId} sx={{ borderTop: i ? `1px solid ${hall.lineSoft}` : 0 }}>
                   <Box component="a" href={`/r/${r.roundId}`} sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, px: 2.25, py: 1.5, textDecoration: "none", color: hall.ink, "&:hover": { bgcolor: hall.ground } }}>
