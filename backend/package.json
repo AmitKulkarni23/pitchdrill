@@ -3,7 +3,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "rm -rf dist && bun build src/handlers/*.ts --outdir dist --target node --format cjs --external '@aws-sdk/*'",
+    "build": "rm -rf dist && bun build src/handlers/*.ts --outdir dist --root src/handlers --target node --format cjs --external '@aws-sdk/*'",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "test:local": "AWS_REGION=us-west-2 AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local DYNAMODB_ENDPOINT=http://localhost:8000 bun test",

@@ -8,30 +8,30 @@ Done before these specs (phase 1): booking core, ticket lookup, slots, CDK stack
 
 ## Backend & Infra
 
-- [TASK-001 — Move rounds to their own partition and add slot stats](backend/001-rounds-partition-and-slot-stats.md) · depends on: none
-- [TASK-002 — Route registry and local dev server](backend/002-routes-registry-and-dev-server.md) · depends on: 001
-- [TASK-003 — Recordings bucket, CloudFront and IVS composition config](infra/003-recordings-storage-and-ivs-config.md) · depends on: 002
-- [TASK-004 — Replay GSI, table stream and OpenRouter secret](infra/004-gsi-stream-and-openrouter-secret.md) · depends on: 003 · **asks the user** for the model ID and to set the key
-- [TASK-005 — Generate briefs with OpenRouter](backend/005-generate-briefs.md) · depends on: 001, 004
-- [TASK-006 — SlotTick: open slots (T-5 minutes)](backend/006-slot-tick-open.md) · depends on: 001, 002, 005
-- [TASK-007 — SlotTick: start rounds or cancel no-shows (T)](backend/007-slot-tick-start.md) · depends on: 003, 006
-- [TASK-008 — SlotTick: buzzer, cleanup and replay registration](backend/008-slot-tick-end-and-recordings.md) · depends on: 007
-- [TASK-009 — Round details, briefs, join and watch tokens](backend/009-round-read-join-watch.md) · depends on: 002, 006
-- [TASK-010 — Spectator chat tokens with nicknames](backend/010-spectator-chat-tokens.md) · depends on: 009
-- [TASK-011 — Votes with live tally](backend/011-votes.md) · depends on: 008, 009
-- [TASK-012 — Replay feed and comments](backend/012-replays-and-comments.md) · depends on: 008, 009, 010
-- [TASK-013 — Reports and IAM-only admin routes](backend/013-reports-and-admin.md) · depends on: 008, 012
+- ~~[TASK-001 — Move rounds to their own partition and add slot stats](backend/001-rounds-partition-and-slot-stats.md) · depends on: none~~
+- ~~[TASK-002 — Route registry and local dev server](backend/002-routes-registry-and-dev-server.md) · depends on: 001~~
+- ~~[TASK-003 — Recordings bucket, CloudFront and IVS composition config](infra/003-recordings-storage-and-ivs-config.md) · depends on: 002~~
+- ~~[TASK-004 — Replay GSI, table stream and OpenRouter secret](infra/004-gsi-stream-and-openrouter-secret.md) · depends on: 003 · **asks the user** for the model ID and to set the key~~
+- ~~[TASK-005 — Generate briefs with OpenRouter](backend/005-generate-briefs.md) · depends on: 001, 004~~
+- ~~[TASK-006 — SlotTick: open slots (T-5 minutes)](backend/006-slot-tick-open.md) · depends on: 001, 002, 005~~
+- ~~[TASK-007 — SlotTick: start rounds or cancel no-shows (T)](backend/007-slot-tick-start.md) · depends on: 003, 006~~
+- ~~[TASK-008 — SlotTick: buzzer, cleanup and replay registration](backend/008-slot-tick-end-and-recordings.md) · depends on: 007~~
+- ~~[TASK-009 — Round details, briefs, join and watch tokens](backend/009-round-read-join-watch.md) · depends on: 002, 006~~
+- ~~[TASK-010 — Spectator chat tokens with nicknames](backend/010-spectator-chat-tokens.md) · depends on: 009~~
+- ~~[TASK-011 — Votes with live tally](backend/011-votes.md) · depends on: 008, 009~~
+- ~~[TASK-012 — Replay feed and comments](backend/012-replays-and-comments.md) · depends on: 008, 009, 010~~
+- ~~[TASK-013 — Reports and IAM-only admin routes](backend/013-reports-and-admin.md) · depends on: 008, 012~~
 
 ## Frontend
 
 - ~~[TASK-014 — Scaffold the Next.js frontend](frontend/014-scaffold.md) · depends on: 002~~ (done early in the impeccable design session; the home page replaced the placeholder)
-- [TASK-015 — Schedule and booking flow](frontend/015-schedule-and-booking.md) · depends on: 001, 014 · **mostly built**: the Study Hall home (`components/home/`) has the slot list, inline Play booking panel, ticket link and calendar file. Remaining: switch the guide to `GET /slots` counts once 001 lands (drop the local `scheduleSlots` fallback in TASK-021), and verify booking against the dev server (002)
-- [TASK-016 — Ticket page and "My bookings"](frontend/016-ticket-page.md) · depends on: 009, 015
-- [TASK-017 — Participant arena (split screen, brief, timer)](frontend/017-participant-arena.md) · depends on: 007, 009, 016
-- [TASK-018 — Live rounds, spectator view, chat and voting](frontend/018-spectator-live.md) · depends on: 010, 011, 017 · also fills the home Watch panel with live tiles (see the approved mockup in CLAUDE.md → Design System)
-- [TASK-019 — Replay page, comments, reports and replay feed](frontend/019-replays.md) · depends on: 012, 013, 018 · the feed is the home "Past rounds" list from the approved mockup
+- ~~[TASK-015 — Schedule and booking flow](frontend/015-schedule-and-booking.md) · depends on: 001, 014~~ (home wired to `GET /slots` counts, `/rounds/live` and `/replays`)
+- ~~[TASK-016 — Ticket page and "My bookings"](frontend/016-ticket-page.md) · depends on: 009, 015~~ (functional build, 2026-10-15; design polish pending)
+- ~~[TASK-017 — Participant arena (split screen, brief, timer)](frontend/017-participant-arena.md) · depends on: 007, 009, 016~~ (functional build, 2026-10-15; design polish pending)
+- ~~[TASK-018 — Live rounds, spectator view, chat and voting](frontend/018-spectator-live.md) · depends on: 010, 011, 017 · also fills the home Watch panel with live tiles (see the approved mockup in CLAUDE.md → Design System)~~ (functional build, 2026-10-15; design polish pending)
+- ~~[TASK-019 — Replay page, comments, reports and replay feed](frontend/019-replays.md) · depends on: 012, 013, 018 · the feed is the home "Past rounds" list from the approved mockup~~ (functional build, 2026-10-15; design polish pending)
 - [TASK-020 — Vercel deployment](frontend/020-vercel-deploy.md) · depends on: 014
 
 ## Go Live
 
-- [TASK-021 — Open the API to the public](infra/021-unlock-public-api.md) · depends on: 013, 019, 020 · **requires user approval** · also set `SHOW_DEMO = false` in `frontend/src/components/home/HomeBoard.tsx` if TASK-018 has not removed it
+- [TASK-021 — Open the API to the public](infra/021-unlock-public-api.md) · depends on: 013, 019, 020 · **requires user approval** · public routes already opened for localhost (2026-10-15, user-approved); remaining: add the Vercel origin to `ALLOWED_ORIGINS` and the production smoke test

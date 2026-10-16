@@ -100,6 +100,10 @@ cd backend && bun run build        # bundles handlers to backend/dist (infra run
 # Tests run against DynamoDB Local (OrbStack/Docker must be running)
 docker run -d --rm --name pitchdrill-ddb -p 8000:8000 amazon/dynamodb-local
 cd backend && bun run test:local
+
+# Local API on :4000 against DynamoDB Local (IVS/OpenRouter are real, via your AWS profile)
+cd backend && bun run dev:table && bun run dev
+curl -X POST "localhost:4000/dev/tick?now=<iso>"   # run SlotTick at any time
 ```
 
 ### Infra (AWS CDK)
@@ -111,15 +115,18 @@ cd infra && bunx cdk diff
 cd infra && bunx cdk deploy --all   # deploys to the default AWS profile's account, us-west-2
 ```
 
-Deployed API (stack output `PitchDrillApiUrl`): `https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com`. **Currently locked to IAM** (`defaultAuthorizer: new HttpIamAuthorizer()` in `infra/lib/backend-stack.ts`): anonymous requests get 403. Remove that line and redeploy to open it to browsers. To call it while locked:
+Deployed API (stack output `PitchDrillApiUrl`): `https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com`. Public routes are open (no authorizer, CORS `http://localhost:3000` only); admin routes need IAM (SigV4). Replays are served from the `PitchDrillRecordingsCdnDomain` output. Call an admin route:
 
 ```bash
 eval "$(aws configure export-credentials --format env)"
 curl --aws-sigv4 "aws:amz:us-west-2:execute-api" --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
   ${AWS_SESSION_TOKEN:+-H "x-amz-security-token: $AWS_SESSION_TOKEN"} \
-  https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com/slots
+  -X POST https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com/admin/rounds/<roundId>/hide
 ```
- A failed *first* create strands the retained `pitchdrill-main` table; delete it (deletion protection off first) before redeploying.
+
+OpenRouter key (set by the user, never in chat or Git): `aws secretsmanager put-secret-value --region us-west-2 --secret-id pitchdrill/openrouter-api-key --secret-string '<key>'`. Without it, rounds get canned briefs from `backend/src/lib/fallbackBriefs.ts`.
+
+A failed *first* create strands the retained `pitchdrill-main` table; delete it (deletion protection off first) before redeploying.
 
 ### Vercel
 
@@ -138,6 +145,7 @@ The visual system is **Study Hall**: a calm, light learning app (online-chess-ar
 - **Tokens**: `frontend/src/config/tokens.ts` (`hall` palette, `panel`, `font`; plain module, safe for server components). Never import tokens from `theme.ts` (a `"use client"` module) in server components: the values arrive as empty client references.
 - **MUI theme**: `frontend/src/config/theme.ts`; components use MUI with `sx` props, no CSS Modules, no Tailwind.
 - **Home components**: `frontend/src/components/home/` (SiteHeader, HomeBoard, PlayPanel, HowItWorks).
+- **Round pages**: `/t/[ticket]` (ticket + participant arena), `/r/[roundId]` (watch, votes, replay, comments); shared pieces in `frontend/src/components/round/` (StageVideo over IVS Real-Time, ChatPanel over IVS Chat, VotePanel, CommentsPanel, ReplayVideo with hls.js). Built functional-first; visual polish still to go through impeccable.
 
 ## Architecture
 
@@ -153,7 +161,7 @@ The visual system is **Study Hall**: a calm, light learning app (online-chess-ar
 - IVS publish tokens are minted only for the seller/buyer holding a valid ticket for that round. Spectators get subscribe-only tokens.
 - Briefs are served per side: each brief endpoint requires that side's ticket.
 - AWS access lives in Lambda IAM roles granted with `.grant*()`, never in the frontend. Services without grant methods (IVS) get `addToRolePolicy` scoped to exact actions and resources, with a comment.
-- Admin routes (phase 2) use API Gateway IAM (SigV4) auth.
+- Admin routes use API Gateway IAM (SigV4) auth; public routes have no authorizer.
 - API Gateway HTTP API per-route throttles (all users combined, not per IP — HTTP APIs don't support WAF). Limits in `docs/system_specs/architecture.md`.
 - CORS allows only `http://localhost:3000` until the Vercel domain is added.
 

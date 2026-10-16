@@ -2,8 +2,6 @@
 
 One DynamoDB table, `pitchdrill-main` (on-demand, PITR, deletion-protected, retained). Keys are strings: `PK`, `SK`. One GSI (`GSI1`) for the replay feed. A DynamoDB stream (`NEW_IMAGE`) feeds `GenerateBriefs`.
 
-Phase 1 (deployed) stores the full round under the slot partition. TASK-001 moves it to its own `ROUND#` partition as described here.
-
 ## Entities
 
 ```mermaid
@@ -56,10 +54,13 @@ erDiagram
 | `status` | `paired`\|`ready`\|`live`\|`cancelled`\|`ended`\|`closed` | transitions in `architecture.md` §4; always conditional on the previous status |
 | `cancelReason?` | `no_show`\|`admin` | |
 | `stageArn?`, `chatRoomArn?`, `compositionArn?` | string | set by `SlotTick` |
+| `recordingPrefix?` | string | from `StartComposition` (`destinations[0].detail.s3.recordingPrefix`, e.g. `<stageId>/<sessionId>/<compositionId>/composite`); IVS writes `events/recording-ended.json` and `media/hls/multivariant.m3u8` under it |
+| `endedBy?` | `admin` | set when an admin ends a live round |
+| `recordingMissingLogged?` | boolean | `RecordingMissing` warning already emitted |
 | `startedAt?`, `endedAt?` | ISO string | |
 | `briefs?` | map `{ product: { name, price, tagline }, seller: string, buyer: string, source: "openrouter"\|"fallback" }` | set by `GenerateBriefs` / `SlotTick`; never returned whole to clients |
 | `votesSold`, `votesNotSold` | number | `ADD` on each vote |
-| `recordingPath?` | string | S3 key of the HLS multivariant playlist |
+| `recordingPath?` | string | `<recordingPrefix>/media/hls/multivariant.m3u8`, served at `https://<cdn>/<recordingPath>` |
 | `hidden?` | boolean | admin hide |
 | `GSI1PK?`, `GSI1SK?` | `"REPLAY"`, `endedAt` | present only when the replay is listable (recording ready, not hidden) |
 
