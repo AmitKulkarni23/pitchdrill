@@ -45,11 +45,13 @@ export async function requireRound(roundId: string): Promise<RoundMeta> {
 }
 
 /**
- * The public shape of a round. Explicit allowlist: briefs (beyond the product once the round is live),
- * booking IDs and ARNs never leave the server.
+ * The public shape of a round. Explicit allowlist: booking IDs and ARNs never leave the server.
+ * Briefs go public in stages: the product and seller sheet once the round is live, the buyer's persona only
+ * after the buzzer (players can read the chat, so a spectator could otherwise leak it to the seller).
  */
 export function toPublicRound(r: RoundMeta) {
   const productPublic = r.status === "live" || r.status === "ended" || r.status === "closed";
+  const personaPublic = r.status === "ended" || r.status === "closed";
   return {
     roundId: r.roundId,
     slotId: r.slotId,
@@ -63,6 +65,7 @@ export function toPublicRound(r: RoundMeta) {
     votesSold: r.votesSold ?? 0,
     votesNotSold: r.votesNotSold ?? 0,
     product: productPublic && r.briefs ? r.briefs.product : undefined,
+    briefs: productPublic && r.briefs ? { seller: r.briefs.seller, buyer: personaPublic ? r.briefs.buyer : undefined } : undefined,
     replayUrl: r.recordingPath ? `https://${process.env.RECORDINGS_CDN_DOMAIN_ENV}/${r.recordingPath}` : undefined,
   };
 }

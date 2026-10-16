@@ -130,7 +130,7 @@ All responses are JSON. Errors are `{ error: { code, message } }` with a user-sa
 | `POST /bookings` | public | `{ slotId, handle, role }` → `{ ticket, booking }` (ticket shown once) | done / 001 |
 | `GET /ticket` | `x-ticket` | The booking for a ticket, incl. opponent and round | done / 001 |
 | `GET /rounds/live` | public | Rounds in `ready`/`live` for the current slot | 009 |
-| `GET /rounds/{roundId}` | public | Round status, handles, times, tally, replay URL, product (from `live` on; never the seller sheet or persona) | 009 |
+| `GET /rounds/{roundId}` | public | Round status, handles, times, tally, replay URL; product + seller sheet from `live`, buyer persona from `ended` | 009 |
 | `GET /rounds/{roundId}/brief` | `x-ticket` | Your own side's brief, from T-30s | 009 |
 | `POST /rounds/{roundId}/join` | `x-ticket` | Participant stage token (PUBLISH+SUBSCRIBE) + receive-only chat token | 009 |
 | `POST /rounds/{roundId}/watch` | public | `{ voterId }` → SUBSCRIBE-only stage token | 009 |
@@ -195,7 +195,7 @@ sequenceDiagram
 
 - Raw tickets are returned once and never stored. Lookups are by hash key.
 - IVS publish tokens only for the ticket holder of that round's seller/buyer booking. Spectator tokens are SUBSCRIBE-only; chat tokens for participants have no capabilities (receive only).
-- Briefs are served per side; the buyer persona is never returned to the seller.
+- Briefs are served per side before the round; the buyer persona is never returned to the seller while the round can still be played. Publicly, the seller sheet appears once the round is live and the persona only after the buzzer (players can read chat, so an earlier reveal could leak the persona to the seller).
 - No AWS credentials in the frontend. OpenRouter key only in Secrets Manager, read by `GenerateBriefs` and `SlotTick`.
 - User text (handles, nicknames, comments, report reasons) is length-limited and validated server-side; React escapes it on render.
 - Replays of hidden rounds are not listed and `GET /rounds/{id}` returns 404 for them.

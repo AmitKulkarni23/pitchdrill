@@ -73,7 +73,7 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
   test("public round never exposes briefs or ARNs; live list shows ready rounds", async () => {
     const { body } = await api("GET", `/rounds/${r1}`);
     expect(body.round).toMatchObject({ roundId: r1, status: "ready", sellerHandle: "amit", buyerHandle: "riya" });
-    expect(JSON.stringify(body)).not.toMatch(/briefs|stage\/|room\/|BookingId/);
+    expect(JSON.stringify(body)).not.toMatch(/briefs|stage\/|room\/|BookingId/); // ready: nothing revealed yet
     setSystemTime(new Date(T - MIN));
     expect((await api("GET", "/rounds/live")).body.rounds).toHaveLength(3);
     expect((await api("GET", "/rounds/not-a-uuid")).status).toBe(404);
@@ -113,7 +113,10 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     expect((await getRound(r2))!.status).toBe("ready");
     expect(fake.events.some((e) => e.name === "round_started")).toBe(true);
     expect((await api("POST", `/rounds/${r1}/votes`, { voterId: voter(), vote: "sold" })).body.error.code).toBe("voting_closed");
-    expect((await api("GET", `/rounds/${r1}`)).body.round.product.name).toBeString();
+    const live = (await api("GET", `/rounds/${r1}`)).body.round;
+    expect(live.product.name).toBeString();
+    expect(live.briefs.seller).toBe((await getRound(r1))!.briefs!.seller);
+    expect(live.briefs.buyer).toBeUndefined(); // persona stays hidden until the buzzer
     await at(T + MIN);
     const cancelled = await getRound(r2);
     expect(cancelled).toMatchObject({ status: "cancelled", cancelReason: "no_show" });
@@ -126,6 +129,7 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     expect(ended).toMatchObject({ status: "ended" });
     expect(fake.stages.has(ended!.stageArn!)).toBe(false);
     expect(fake.events.some((e) => e.name === "buzzer")).toBe(true);
+    expect((await api("GET", `/rounds/${r1}`)).body.round.briefs.buyer).toBe(ended!.briefs!.buyer);
     const v = voter();
     expect((await api("POST", `/rounds/${r1}/votes`, { voterId: v, vote: "sold" })).body).toEqual({ votesSold: 1, votesNotSold: 0 });
     const again = await api("POST", `/rounds/${r1}/votes`, { voterId: v, vote: "not_sold" });

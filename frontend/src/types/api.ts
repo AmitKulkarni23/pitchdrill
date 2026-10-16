@@ -49,6 +49,8 @@ export interface PublicRound {
   votesSold: number;
   votesNotSold: number;
   product?: Product;
+  /** Seller sheet from live on; buyer persona only after the buzzer. */
+  briefs?: { seller: string; buyer?: string };
   replayUrl?: string;
 }
 

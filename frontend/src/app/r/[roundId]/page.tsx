@@ -49,9 +49,9 @@ function WatchPage() {
   if (error) return <RoundShell title="Round not found"><Alert severity="error">{error.message}</Alert></RoundShell>;
   if (!round || now === null) return <RoundShell title="Loading round…"><Box sx={{ ...panel, height: 360 }} /></RoundShell>;
 
-  const title = round.product ? round.product.name : `@${round.sellerHandle} vs @${round.buyerHandle}`;
+  const title = round.product ? round.product.name : `${round.sellerHandle} vs ${round.buyerHandle}`;
   return (
-    <RoundShell title={title} subtitle={`Seller @${round.sellerHandle} · Buyer @${round.buyerHandle}${round.product ? ` · ${round.product.price}` : ""}`}>
+    <RoundShell title={title} subtitle={round.product?.tagline}>
       <RoundClock round={round} now={now} />
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr" }, gap: 2.5, alignItems: "start" }}>
         <Box sx={{ display: "grid", gap: 2.5 }}>
@@ -63,9 +63,24 @@ function WatchPage() {
               <Box sx={{ ...panel, p: 3, color: hall.muted }}>The replay is processing and will appear here in a few minutes.</Box>
             ))}
           {round.status === "cancelled" && <Alert severity="info">This round was cancelled.</Alert>}
-          {round.product && (
-            <Typography sx={{ color: hall.muted }}>{round.product.tagline}</Typography>
-          )}
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
+            <BriefCard
+              side="Seller"
+              handle={round.sellerHandle}
+              heading={round.product ? `Product sheet · ${round.product.price}` : "Product sheet"}
+              text={round.briefs?.seller}
+              hiddenNote="Revealed when the round goes live."
+              tint={hall.seller}
+            />
+            <BriefCard
+              side="Buyer"
+              handle={round.buyerHandle}
+              heading="Secret persona"
+              text={round.briefs?.buyer}
+              hiddenNote={round.status === "cancelled" ? "Not revealed: the round didn't happen." : "Hidden from the seller. Revealed at the buzzer."}
+              tint={hall.buyer}
+            />
+          </Box>
           {(round.status === "ended" || round.status === "closed") && <CommentsPanel roundId={round.roundId} open />}
         </Box>
         <Box sx={{ display: "grid", gap: 2.5 }}>
@@ -74,5 +89,24 @@ function WatchPage() {
         </Box>
       </Box>
     </RoundShell>
+  );
+}
+
+/** One side of the round: who played it and what they were given. */
+function BriefCard({ side, handle, heading, text, hiddenNote, tint }: { side: string; handle: string; heading: string; text?: string; hiddenNote: string; tint: string }) {
+  return (
+    <Box component="section" aria-label={`${side} brief`} sx={{ ...panel, overflow: "hidden" }}>
+      <Box sx={{ bgcolor: tint, px: 2, py: 1.25 }}>
+        <Typography sx={{ fontWeight: 800 }}>
+          {side} · {handle}
+        </Typography>
+      </Box>
+      <Box sx={{ p: 2, display: "grid", gap: 0.75 }}>
+        <Typography sx={{ fontWeight: 700, fontSize: 14 }}>{heading}</Typography>
+        <Typography variant="body2" sx={{ color: text ? hall.ink : hall.muted, whiteSpace: "pre-wrap" }}>
+          {text ?? hiddenNote}
+        </Typography>
+      </Box>
+    </Box>
   );
 }
