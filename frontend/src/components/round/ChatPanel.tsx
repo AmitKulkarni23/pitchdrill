@@ -15,7 +15,7 @@ export type RoundEvent = { name: string; attributes: Record<string, string> };
  * and get a send token. Server events (round_started, buzzer, tally, round_cancelled) go to `onEvent`.
  */
 export function ChatPanel({ roundId, participantToken, onEvent }: { roundId: string; participantToken?: ChatToken; onEvent?: (e: RoundEvent) => void }) {
-  const [nickname, setNick] = useState<string | null>(participantToken ? "" : getNickname());
+  const [nickname, setNick] = useState<string | null>(participantToken ? "" : getNickname() || null);
   const [draft, setDraft] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +33,23 @@ export function ChatPanel({ roundId, participantToken, onEvent }: { roundId: str
     let stopped = false;
     (async () => {
       const { ChatRoom, SendMessageRequest } = await import("amazon-ivs-chat-messaging");
+      const fetchToken = () => participantToken ?? api.post<ChatToken>(`/rounds/${roundId}/chat-token`, { voterId: getVoterId(), nickname });
+      // First token up front, so a rejected nickname shows here instead of failing inside the chat SDK.
+      let first: ChatToken | undefined;
+      try {
+        first = await fetchToken();
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Chat is unavailable right now.");
+        // A rejected nickname (a player's handle, bad characters) goes back to the picker.
+        if (e instanceof ApiError && (e.code === "nickname_taken" || e.code === "bad_nickname")) {
+          setNickname("");
+          setNick(null);
+        }
+        return;
+      }
       const tokenProvider = async () => {
-        const t = participantToken ?? (await api.post<ChatToken>(`/rounds/${roundId}/chat-token`, { voterId: getVoterId(), nickname }));
+        const t = first ?? (await fetchToken());
+        first = undefined;
         return {
           token: t.token,
           sessionExpirationTime: t.sessionExpirationTime ? new Date(t.sessionExpirationTime) : undefined,
@@ -79,7 +94,7 @@ export function ChatPanel({ roundId, participantToken, onEvent }: { roundId: str
       <Typography sx={{ fontWeight: 800 }}>Chat {connected && <Box component="span" sx={{ color: hall.muted, fontWeight: 600, fontSize: 13 }}>· connected</Box>}</Typography>
       {error && <Alert severity="error">{error}</Alert>}
       {nickname === null ? (
-        <NicknameForm onPick={(n) => (setNickname(n), setNick(n))} />
+        <NicknameForm onPick={(n) => (setError(null), setNickname(n), setNick(n))} />
       ) : (
         <>
           <Box aria-live="polite" sx={{ display: "grid", gap: 0.5, maxHeight: 320, overflowY: "auto", alignContent: "start", fontSize: 14 }}>

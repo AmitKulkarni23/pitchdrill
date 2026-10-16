@@ -41,9 +41,10 @@ export async function publishingUserIds(stageArn: string): Promise<string[]> {
   const sessionId = stage?.activeSessionId;
   if (!sessionId) return [];
   const { participants } = await stages.send(
-    new ListParticipantsCommand({ stageArn, sessionId, filterByPublished: true, filterByState: "CONNECTED", maxResults: 50 }),
+    // IVS accepts only one filter per call, so filter by state and check `published` here.
+    new ListParticipantsCommand({ stageArn, sessionId, filterByState: "CONNECTED", maxResults: 100 }),
   );
-  return (participants ?? []).map((p) => p.userId ?? "");
+  return (participants ?? []).filter((p) => p.published).map((p) => p.userId ?? "");
 }
 
 /** Starts split-screen recording; participants are ordered by their `order` token attribute (seller 1, buyer 2). */

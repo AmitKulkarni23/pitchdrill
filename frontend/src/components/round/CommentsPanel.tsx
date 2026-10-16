@@ -12,7 +12,7 @@ import { NicknameForm } from "./ChatPanel";
 export function CommentsPanel({ roundId, open }: { roundId: string; open: boolean }) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [next, setNext] = useState<string | undefined>();
-  const [nickname, setNick] = useState<string | null>(getNickname);
+  const [nickname, setNick] = useState<string | null>(() => getNickname() || null);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
 

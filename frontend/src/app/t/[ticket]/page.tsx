@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Alert, Box, Button, Typography } from "@mui/material";
 import { ChatPanel, type RoundEvent } from "@/components/round/ChatPanel";
@@ -17,7 +17,16 @@ import type { Booking, BriefResponse, JoinResponse } from "@/types/api";
 const OPEN_BEFORE = 5 * 60_000;
 
 /** Ticket page and participant arena: booking status, then camera + brief + timer for the round. */
-export default function TicketPage() {
+// useParams needs a Suspense boundary with cacheComponents; the page itself is all client-side.
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <TicketPage />
+    </Suspense>
+  );
+}
+
+function TicketPage() {
   const { ticket } = useParams<{ ticket: string }>();
   const now = useNow();
   const timeZone = useTimeZone();

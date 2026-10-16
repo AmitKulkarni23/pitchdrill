@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Alert, Box, Typography } from "@mui/material";
 import { ChatPanel, type RoundEvent } from "@/components/round/ChatPanel";
@@ -16,7 +16,16 @@ import { api, ApiError } from "@/lib/api";
 import { getVoterId } from "@/lib/storage";
 
 /** Spectator page: live split screen + chat while the round runs, then votes, replay and comments. */
-export default function WatchPage() {
+// useParams needs a Suspense boundary with cacheComponents; the page itself is all client-side.
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <WatchPage />
+    </Suspense>
+  );
+}
+
+function WatchPage() {
   const { roundId } = useParams<{ roundId: string }>();
   const { round, setRound, error, refresh } = useRound(roundId);
   const now = useNow();
