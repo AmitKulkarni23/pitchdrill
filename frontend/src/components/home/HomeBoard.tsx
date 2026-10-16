@@ -6,33 +6,11 @@ import { useNow, useTimeZone } from "@/hooks/useClock";
 import { api } from "@/lib/api";
 import { countdown, dayLabel, groupSlotsByLocalDay, isFull, MAX_PER_ROLE, scheduleSlots, seatsLabel, slotLabel, timeLabel, waitHint } from "@/lib/slots";
 import { hall, panel } from "@/config/tokens";
-import type { SlotWithStats } from "@/types/api";
-import { LiveTile, type LiveRound } from "./LiveTile";
+import type { PublicRound, SlotWithStats } from "@/types/api";
+import { LiveTile } from "./LiveTile";
 import { PlayPanel } from "./PlayPanel";
 
 type Slot = { slotId: string; stats: Omit<SlotWithStats, "slotId"> | null };
-
-// TEMPORARY sample live rounds so the Watch grid is visible before GET /rounds/live (TASK-009) exists.
-// Set to false (or delete with DEMO/demoRounds) before going public; TASK-018 replaces it with real data.
-const SHOW_DEMO = true;
-const DEMO = [
-  ["Noise-cancelling headphones", "maya_k", "dan_r"],
-  ["Standing desk converter", "priya_s", "tom_b"],
-  ["Cold brew subscription", "jordan_l", "sam_w"],
-  ["Password manager for families", "aisha_m", "leo_t"],
-] as const;
-// Sample seat counts for the first few upcoming slots (sellers, buyers, waiting sellers, waiting buyers).
-const DEMO_STATS = [
-  [1, 0, 1, 0],
-  [4, 2, 2, 0],
-  [0, 0, 0, 0],
-  [4, 4, 0, 0],
-  [2, 3, 0, 1],
-].map(([sellers, buyers, waitingSellers, waitingBuyers]) => ({ sellers, buyers, waitingSellers, waitingBuyers, rounds: Math.min(sellers, buyers) }));
-function demoRounds(now: number): LiveRound[] {
-  const minute = now - (now % 60_000);
-  return DEMO.map(([product, sellerHandle, buyerHandle], i) => ({ roundId: `demo-${i}`, product, sellerHandle, buyerHandle, endsAt: minute + 60_000 - i * 4_000 }));
-}
 
 const row = { display: "flex", flexWrap: "wrap", gap: 2.5, alignItems: "stretch" } as const;
 
@@ -43,13 +21,19 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
   const [remote, setRemote] = useState<SlotWithStats[] | "unavailable" | null>(null);
   const [day, setDay] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
-  const demo = SHOW_DEMO;
+  const [live, setLive] = useState<PublicRound[]>([]);
+  const [replays, setReplays] = useState<PublicRound[]>([]);
 
   useEffect(() => {
     api
       .get<{ slots: SlotWithStats[] }>("/slots")
       .then((r) => setRemote(r.slots))
       .catch(() => setRemote("unavailable"));
+    api.get<{ replays: PublicRound[] }>("/replays").then((r) => setReplays(r.replays), () => {});
+    const loadLive = () => api.get<{ rounds: PublicRound[] }>("/rounds/live").then((r) => setLive(r.rounds), () => {});
+    loadLive();
+    const id = setInterval(loadLive, 15_000);
+    return () => clearInterval(id);
   }, []);
 
   if (now === null || timeZone === null || remote === null) {
@@ -65,12 +49,11 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
 
   const slots: Slot[] = Array.isArray(remote)
     ? remote.filter((s) => Date.parse(s.slotId) - 5 * 60_000 >= now).map(({ slotId, ...stats }) => ({ slotId, stats }))
-    : scheduleSlots(now).map((slotId, i) => ({ slotId, stats: (demo && DEMO_STATS[i]) || null }));
+    : scheduleSlots(now).map((slotId) => ({ slotId, stats: null }));
   // A picked slot can close while the page sits open; fall back to the next one.
   const selected = slots.find((s) => s.slotId === picked && !isFull(s.stats))?.slotId ?? slots.find((s) => !isFull(s.stats))?.slotId ?? null;
   const next = slots[0]?.slotId;
-  const live = demo ? demoRounds(now) : [];
-  const liveSlot = new Date(now - (now % (15 * 60_000))).toISOString();
+  const liveSlot = live[0]?.slotId;
   const days = groupSlotsByLocalDay(slots, timeZone);
   const active = days.find((d) => d.dayKey === day) ?? days[0];
 
@@ -87,9 +70,9 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
             <Typography id="watch-h" variant="h2">
               Watch
             </Typography>
-            {live.length > 0 && (
+            {liveSlot && (
               <Typography variant="body2" sx={{ color: hall.muted }}>
-                {timeLabel(liveSlot, timeZone)} slot · {live.length} {live.length === 1 ? "round" : "rounds"} live{demo && " · sample data"}
+                {timeLabel(liveSlot, timeZone)} slot · {live.length} {live.length === 1 ? "round" : "rounds"} live
               </Typography>
             )}
           </Box>
@@ -134,7 +117,7 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
               Upcoming slots
             </Typography>
             <Typography variant="body2" sx={{ color: hall.muted }}>
-              Replays of every round will appear here once the first rounds run.
+              Book a seat, or watch a past round below.
             </Typography>
           </Box>
 
@@ -207,11 +190,29 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
               </Box>
               <Typography variant="body2" sx={{ color: hall.muted }}>
                 Times are in your time zone ({timeZone}). Booking closes 5 minutes before each round.
-                {demo ? " Seat counts shown are sample data." : remote === "unavailable" && " Seat counts appear once booking opens to the public."}
+                {remote === "unavailable" && " Seat counts are unavailable right now."}
               </Typography>
             </>
           ) : (
             <Typography sx={{ color: hall.muted }}>No slots are open right now. New slots open daily, 7 days ahead.</Typography>
+          )}
+
+          <Typography id="past-h" variant="h2" sx={{ mt: 2 }}>
+            Past rounds
+          </Typography>
+          {replays.length ? (
+            <Box component="ul" aria-labelledby="past-h" sx={{ ...panel, m: 0, p: 0, listStyle: "none", overflow: "hidden" }}>
+              {replays.map((r, i) => (
+                <Box component="li" key={r.roundId} sx={{ borderTop: i ? `1px solid ${hall.lineSoft}` : 0 }}>
+                  <Box component="a" href={`/r/${r.roundId}`} sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, px: 2.25, py: 1.5, textDecoration: "none", color: hall.ink, "&:hover": { bgcolor: hall.ground } }}>
+                    <Box sx={{ flex: "999 1 220px", fontWeight: 700 }}>{r.product?.name ?? "Round"}</Box>
+                    <Box sx={{ fontSize: 14, color: hall.muted }}>@{r.sellerHandle} → @{r.buyerHandle} · Sold {r.votesSold} · Not sold {r.votesNotSold}</Box>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          ) : (
+            <Typography sx={{ color: hall.muted }}>Replays of every round appear here after it ends.</Typography>
           )}
         </Box>
 

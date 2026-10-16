@@ -2,9 +2,9 @@ import { Box, Button } from "@mui/material";
 import { hall } from "@/config/tokens";
 
 const LINKS = [
-  { href: "#watch", label: "Watch" },
-  { href: "#play", label: "Play" },
-  { href: "#how", label: "How it works" },
+  { href: "/#watch", label: "Watch" },
+  { href: "/#play", label: "Play" },
+  { href: "/#how", label: "How it works" },
 ];
 
 export function SiteHeader() {
@@ -29,7 +29,7 @@ export function SiteHeader() {
             </Box>
           ))}
         </Box>
-        <Button variant="contained" href="#play" sx={{ ml: "auto" }}>
+        <Button variant="contained" href="/#play" sx={{ ml: "auto" }}>
           Book a seat
         </Button>
       </Box>

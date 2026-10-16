@@ -1,15 +1,7 @@
 import { Box, Typography } from "@mui/material";
 import { countdown } from "@/lib/slots";
 import { hall } from "@/config/tokens";
-
-// ponytail: local shape until GET /rounds/live (TASK-009) defines it; the product name must be public there.
-export interface LiveRound {
-  roundId: string;
-  product: string;
-  sellerHandle: string;
-  buyerHandle: string;
-  endsAt: number;
-}
+import type { PublicRound } from "@/types/api";
 
 const initials = (handle: string) => handle.slice(0, 2).toUpperCase();
 
@@ -27,13 +19,14 @@ function Side({ handle, bg, ink }: { handle: string; bg: string; ink: string }) 
 }
 
 /** One live round: seller left, buyer right, time left, product below. Opens the round's watch page. */
-export function LiveTile({ round, now }: { round: LiveRound; now: number }) {
-  const left = countdown(round.endsAt - now);
+export function LiveTile({ round, now }: { round: PublicRound; now: number }) {
+  const product = round.product?.name ?? "Starting soon";
+  const left = round.endsAt ? `${countdown(Date.parse(round.endsAt) - now)} left` : `starts in ${countdown(Date.parse(round.slotId) - now)}`;
   return (
     <Box
       component="a"
       href={`/r/${round.roundId}`}
-      aria-label={`Watch @${round.sellerHandle} sell ${round.product} to @${round.buyerHandle}, live, ${left} left`}
+      aria-label={`Watch @${round.sellerHandle} sell ${product} to @${round.buyerHandle}, ${left}`}
       sx={{ display: "grid", gap: 1.25, textDecoration: "none", color: hall.ink, "&:hover .frame, &:focus-visible .frame": { boxShadow: `0 0 0 2px ${hall.green}` } }}
     >
       <Box className="frame" sx={{ position: "relative", aspectRatio: "16 / 10", borderRadius: "12px", overflow: "hidden", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px", bgcolor: "#fff", transition: "box-shadow 160ms" }}>
@@ -43,11 +36,11 @@ export function LiveTile({ round, now }: { round: LiveRound; now: number }) {
           <Box aria-hidden sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: hall.live }} />
           LIVE
         </Box>
-        <Box sx={{ ...pill, top: 10, right: 10, bgcolor: hall.ink, color: "#fff" }}>{left} left</Box>
+        <Box sx={{ ...pill, top: 10, right: 10, bgcolor: hall.ink, color: "#fff" }}>{left}</Box>
         <Box sx={{ ...nameTag, left: 10 }}>Seller @{round.sellerHandle}</Box>
         <Box sx={{ ...nameTag, right: 10 }}>Buyer @{round.buyerHandle}</Box>
       </Box>
-      <Typography sx={{ fontWeight: 700, fontSize: 16, lineHeight: 1.3 }}>{round.product}</Typography>
+      <Typography sx={{ fontWeight: 700, fontSize: 16, lineHeight: 1.3 }}>{product}</Typography>
     </Box>
   );
 }

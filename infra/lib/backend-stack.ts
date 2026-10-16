@@ -5,13 +5,27 @@ import * as apigw from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpIamAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { AccessLogFormat } from 'aws-cdk-lib/aws-apigateway';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as ivs from 'aws-cdk-lib/aws-ivs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as scheduler from 'aws-cdk-lib/aws-scheduler';
+import * as targets from 'aws-cdk-lib/aws-scheduler-targets';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import { routes } from '../../backend/src/routes';
 
-// Browser origins allowed to call the API. Add the Vercel domain once the frontend is deployed.
+// Browser origins allowed to call the API and fetch replays. Add the Vercel domain once the frontend is live.
 const ALLOWED_ORIGINS = ['http://localhost:3000'];
+// OpenRouter model for briefs (chosen by the user, 2026-10-15).
+const OPENROUTER_MODEL = 'anthropic/claude-haiku-5.5';
+
+const pascal = (name: string) => `${name[0]!.toUpperCase()}${name.slice(1)}`;
 
 export class PitchDrillBackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -21,7 +35,7 @@ export class PitchDrillBackendStack extends cdk.Stack {
     // 1. DATA LAYER
     // ======================
 
-    // Single table; key layout in docs/architecture.md. Production data: retained and deletion-protected.
+    // Single table; layout in docs/system_specs/data_model.md. Production data: retained and deletion-protected.
     const table = new dynamodb.TableV2(this, 'PitchDrillMainTable', {
       tableName: 'pitchdrill-main',
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
@@ -30,54 +44,201 @@ export class PitchDrillBackendStack extends cdk.Stack {
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
       deletionProtection: true,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
+      // Replay feed (GSI1PK = "REPLAY", GSI1SK = endedAt).
+      globalSecondaryIndexes: [
+        {
+          indexName: 'GSI1',
+          partitionKey: { name: 'GSI1PK', type: dynamodb.AttributeType.STRING },
+          sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
+          projectionType: dynamodb.ProjectionType.ALL,
+        },
+      ],
+      // New round META items trigger brief generation.
+      dynamoStream: dynamodb.StreamViewType.NEW_IMAGE,
+    });
+
+    // Placeholder only; the real key is set out of band with `aws secretsmanager put-secret-value` (CLAUDE.md).
+    const openRouterSecret = new secretsmanager.Secret(this, 'PitchDrillOpenRouterSecret', {
+      secretName: 'pitchdrill/openrouter-api-key',
+      secretStringValue: cdk.SecretValue.unsafePlainText('set-me'),
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // ======================
-    // 2. COMPUTE LAYER
+    // 2. MEDIA LAYER
+    // ======================
+
+    const recordings = new s3.Bucket(this, 'PitchDrillRecordingsBucket', {
+      bucketName: `pitchdrill-recordings-${this.account}`,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+    // IVS composite recording writes with its service principal. IVS adds this statement itself when the storage
+    // configuration is created, but CloudFormation owns the bucket policy and would drop it on the next update,
+    // so it is declared here. https://docs.aws.amazon.com/ivs/latest/RealTimeUserGuide/rt-composite-recording.html
+    recordings.addToResourcePolicy(
+      new iam.PolicyStatement({
+        sid: 'IvsCompositeWrite',
+        principals: [new iam.ServicePrincipal(`ivs-composite.${this.region}.amazonaws.com`)],
+        actions: ['s3:PutObject', 's3:PutObjectAcl'],
+        resources: [recordings.arnForObjects('*')],
+        conditions: {
+          StringEquals: { 's3:x-amz-acl': 'bucket-owner-full-control', 'aws:SourceAccount': this.account },
+          Bool: { 'aws:SecureTransport': 'true' },
+        },
+      }),
+    );
+
+    // Replays are served through CloudFront with Origin Access Control; the bucket stays private.
+    const replayCors = new cloudfront.ResponseHeadersPolicy(this, 'PitchDrillReplayCorsPolicy', {
+      responseHeadersPolicyName: 'pitchdrill-replay-cors',
+      corsBehavior: {
+        accessControlAllowOrigins: ALLOWED_ORIGINS,
+        accessControlAllowMethods: ['GET', 'HEAD'],
+        accessControlAllowHeaders: ['*'],
+        accessControlAllowCredentials: false,
+        originOverride: true,
+      },
+    });
+    const cdn = new cloudfront.Distribution(this, 'PitchDrillRecordingsCdn', {
+      comment: 'PitchDrill replay videos',
+      defaultBehavior: {
+        origin: origins.S3BucketOrigin.withOriginAccessControl(recordings),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        originRequestPolicy: cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN,
+        responseHeadersPolicy: replayCors,
+      },
+      priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
+    });
+
+    const encoder = new ivs.CfnEncoderConfiguration(this, 'PitchDrillCompositeEncoder', {
+      name: 'pitchdrill-composite',
+      video: { width: 1280, height: 720, framerate: 30, bitrate: 2_500_000 },
+    });
+    const storage = new ivs.CfnStorageConfiguration(this, 'PitchDrillRecordingsStorage', {
+      name: 'pitchdrill-recordings',
+      s3: { bucketName: recordings.bucketName },
+    });
+    // IVS validates its write access when the storage configuration is created.
+    if (recordings.policy) storage.node.addDependency(recordings.policy);
+
+    // ======================
+    // 3. COMPUTE LAYER
     // ======================
 
     // Handlers are bundled by `bun run build` in backend/ (cdk.json runs it before synth).
     const code = lambda.Code.fromAsset(path.join(__dirname, '../../backend/dist'));
+    const logGroups: Record<string, logs.LogGroup> = {};
 
-    const makeFunction = (name: string) => {
+    const makeFunction = (name: string, opts: { timeout?: cdk.Duration; memorySize?: number; environment?: Record<string, string> } = {}) => {
       const logGroup = new logs.LogGroup(this, `PitchDrill${name}Logs`, {
         logGroupName: `/aws/lambda/PitchDrill${name}`,
         retention: logs.RetentionDays.ONE_MONTH,
         removalPolicy: cdk.RemovalPolicy.DESTROY,
       });
-      const fn = new lambda.Function(this, `PitchDrill${name}`, {
+      logGroups[name] = logGroup;
+      return new lambda.Function(this, `PitchDrill${name}`, {
         functionName: `PitchDrill${name}`,
         runtime: lambda.Runtime.NODEJS_24_X,
         architecture: lambda.Architecture.ARM_64,
         code,
         handler: `${name[0]!.toLowerCase()}${name.slice(1)}.handler`,
-        memorySize: 256,
-        timeout: cdk.Duration.seconds(10),
+        memorySize: opts.memorySize ?? 256,
+        timeout: opts.timeout ?? cdk.Duration.seconds(10),
         tracing: lambda.Tracing.ACTIVE,
         logGroup,
-        environment: { TABLE_NAME_ENV: table.tableName },
+        environment: { TABLE_NAME_ENV: table.tableName, ...opts.environment },
       });
-      return { fn, logGroup };
     };
 
-    const listSlots = makeFunction('ListSlots');
-    const createBooking = makeFunction('CreateBooking');
-    const getTicket = makeFunction('GetTicket');
+    // IVS has no CDK grant methods: scoped role policies on exact actions and resource types.
+    const ivsArn = (resource: string) => this.formatArn({ service: 'ivs', resource, resourceName: '*' });
+    const roomArn = this.formatArn({ service: 'ivschat', resource: 'room', resourceName: '*' });
+    const allow = (fn: lambda.IFunction, actions: string[], resources: string[]) =>
+      fn.addToRolePolicy(new iam.PolicyStatement({ actions, resources }));
+    const ivsPolicies = {
+      stageToken: (fn: lambda.IFunction) => allow(fn, ['ivs:CreateParticipantToken'], [ivsArn('stage')]),
+      chatToken: (fn: lambda.IFunction) => allow(fn, ['ivschat:CreateChatToken'], [roomArn]),
+      sendEvent: (fn: lambda.IFunction) => allow(fn, ['ivschat:SendEvent'], [roomArn]),
+      endRound: (fn: lambda.IFunction) => {
+        allow(fn, ['ivs:StopComposition'], [ivsArn('composition')]);
+        allow(fn, ['ivs:DeleteStage'], [ivsArn('stage')]);
+        allow(fn, ['ivschat:SendEvent', 'ivschat:DeleteRoom'], [roomArn]);
+      },
+    };
 
-    // Least privilege: listSlots touches no AWS resources.
-    table.grantReadWriteData(createBooking.fn);
-    table.grantReadData(getTicket.fn);
+    // API handlers: one Lambda per route in backend/src/routes.ts. Grants are per function and explicit.
+    const apiEnv = { RECORDINGS_CDN_DOMAIN_ENV: cdn.distributionDomainName };
+    const fns: Record<string, lambda.Function> = {};
+    for (const route of routes) fns[route.handler] = makeFunction(pascal(route.handler), { environment: apiEnv });
+
+    const readers = ['listSlots', 'getTicket', 'listLiveRounds', 'getRound', 'getBrief', 'joinRound', 'watchRound', 'createChatToken', 'listReplays', 'listComments', 'adminListReports'];
+    const writers = ['createBooking', 'castVote', 'createComment', 'createReport', 'adminEndRound', 'adminHideRound'];
+    readers.forEach((h) => table.grantReadData(fns[h]!));
+    writers.forEach((h) => table.grantReadWriteData(fns[h]!));
+    ivsPolicies.stageToken(fns.joinRound!);
+    ivsPolicies.chatToken(fns.joinRound!);
+    ivsPolicies.stageToken(fns.watchRound!);
+    ivsPolicies.chatToken(fns.createChatToken!);
+    ivsPolicies.sendEvent(fns.castVote!);
+    ivsPolicies.endRound(fns.adminEndRound!);
+
+    // SlotTick drives every round through its lifecycle (docs/system_specs/architecture.md §4).
+    // ponytail: no reserved concurrency (account limit is 10); overlapping ticks are safe because every transition is conditional.
+    const slotTick = makeFunction('SlotTick', {
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 512,
+      environment: {
+        OPENROUTER_SECRET_ARN_ENV: openRouterSecret.secretArn,
+        OPENROUTER_MODEL_ENV: OPENROUTER_MODEL,
+        STORAGE_CONFIGURATION_ARN_ENV: storage.attrArn,
+        ENCODER_CONFIGURATION_ARN_ENV: encoder.attrArn,
+        RECORDINGS_BUCKET_ENV: recordings.bucketName,
+      },
+    });
+    table.grantReadWriteData(slotTick);
+    openRouterSecret.grantRead(slotTick);
+    recordings.grantRead(slotTick);
+    allow(slotTick, ['ivs:CreateStage', 'ivs:DeleteStage', 'ivs:GetStage', 'ivs:ListParticipants', 'ivs:TagResource'], [ivsArn('stage')]);
+    allow(slotTick, ['ivs:StartComposition', 'ivs:StopComposition', 'ivs:TagResource'], [ivsArn('composition'), ivsArn('stage'), encoder.attrArn, storage.attrArn]);
+    allow(slotTick, ['ivschat:CreateRoom', 'ivschat:DeleteRoom', 'ivschat:SendEvent', 'ivschat:TagResource'], [roomArn]);
+
+    new scheduler.Schedule(this, 'PitchDrillSlotTickSchedule', {
+      scheduleName: 'pitchdrill-slot-tick',
+      description: 'Every minute during slot hours (4:00–8:45 PM Pacific slots, with margin either side).',
+      schedule: scheduler.ScheduleExpression.cron({ minute: '*', hour: '15-21', timeZone: cdk.TimeZone.AMERICA_LOS_ANGELES }),
+      target: new targets.LambdaInvoke(slotTick, { retryAttempts: 0 }),
+    });
+
+    // GenerateBriefs: new round META → OpenRouter brief. Failures are logged; SlotTick retries/falls back at T-5m.
+    const generateBriefs = makeFunction('GenerateBriefs', {
+      timeout: cdk.Duration.seconds(60),
+      environment: { OPENROUTER_SECRET_ARN_ENV: openRouterSecret.secretArn, OPENROUTER_MODEL_ENV: OPENROUTER_MODEL },
+    });
+    table.grantWriteData(generateBriefs);
+    openRouterSecret.grantRead(generateBriefs);
+    generateBriefs.addEventSource(
+      new DynamoEventSource(table, {
+        startingPosition: lambda.StartingPosition.LATEST,
+        batchSize: 10,
+        retryAttempts: 0,
+        filters: [lambda.FilterCriteria.filter({ eventName: lambda.FilterRule.isEqual('INSERT'), dynamodb: { Keys: { SK: { S: lambda.FilterRule.isEqual('META') } } } })],
+      }),
+    );
 
     // ======================
-    // 3. API LAYER
+    // 4. API LAYER
     // ======================
 
+    // Public routes have no authorizer (throttles are the abuse limit); admin routes need IAM (SigV4) forever.
     const api = new apigw.HttpApi(this, 'PitchDrillApi', {
       apiName: 'pitchdrill-api',
       createDefaultStage: false,
-      // Closed to the internet while testing: every route needs an IAM (SigV4) signed request.
-      // Remove to open the public routes to browsers.
-      defaultAuthorizer: new HttpIamAuthorizer(),
       corsPreflight: {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: [apigw.CorsHttpMethod.GET, apigw.CorsHttpMethod.POST],
@@ -86,23 +247,14 @@ export class PitchDrillBackendStack extends cdk.Stack {
       },
     });
 
-    const routes = [
-      ...api.addRoutes({
-        path: '/slots',
-        methods: [apigw.HttpMethod.GET],
-        integration: new HttpLambdaIntegration('PitchDrillListSlotsIntegration', listSlots.fn),
+    const apiRoutes = routes.flatMap((route) =>
+      api.addRoutes({
+        path: route.path,
+        methods: [route.method === 'GET' ? apigw.HttpMethod.GET : apigw.HttpMethod.POST],
+        integration: new HttpLambdaIntegration(`PitchDrill${pascal(route.handler)}Integration`, fns[route.handler]!),
+        ...(route.auth === 'iam' && { authorizer: new HttpIamAuthorizer() }),
       }),
-      ...api.addRoutes({
-        path: '/bookings',
-        methods: [apigw.HttpMethod.POST],
-        integration: new HttpLambdaIntegration('PitchDrillCreateBookingIntegration', createBooking.fn),
-      }),
-      ...api.addRoutes({
-        path: '/ticket',
-        methods: [apigw.HttpMethod.GET],
-        integration: new HttpLambdaIntegration('PitchDrillGetTicketIntegration', getTicket.fn),
-      }),
-    ];
+    );
 
     const accessLogs = new logs.LogGroup(this, 'PitchDrillApiAccessLogs', {
       logGroupName: '/aws/apigateway/pitchdrill-api',
@@ -131,25 +283,20 @@ export class PitchDrillBackendStack extends cdk.Stack {
       },
     });
     const cfnStage = stage.node.defaultChild as apigw.CfnStage;
-    cfnStage.routeSettings = {
-      'POST /bookings': { ThrottlingRateLimit: 10, ThrottlingBurstLimit: 20 },
-      'GET /ticket': { ThrottlingRateLimit: 20, ThrottlingBurstLimit: 40 },
-      'GET /slots': { ThrottlingRateLimit: 20, ThrottlingBurstLimit: 40 },
-    };
     // routeSettings is a raw JSON map, so keys use CloudFormation PascalCase. Routes must exist first.
-    routes.forEach((route) => cfnStage.node.addDependency(route));
+    cfnStage.routeSettings = Object.fromEntries(
+      routes
+        .filter((r) => r.throttle)
+        .map((r) => [`${r.method} ${r.path}`, { ThrottlingRateLimit: r.throttle!.rateLimit, ThrottlingBurstLimit: r.throttle!.burstLimit }]),
+    );
+    apiRoutes.forEach((route) => cfnStage.node.addDependency(route));
 
     // ======================
-    // 4. MONITORING
+    // 5. MONITORING
     // ======================
 
-    // Unhandled errors are logged at ERROR by backend/src/lib/http.ts and returned as 500s.
-    const unhandledErrorsAlarm = (
-      id: string,
-      alarmName: string,
-      logGroup: logs.LogGroup,
-      description: string,
-    ) => {
+    // Unhandled errors are logged at ERROR by backend/src/lib/http.ts (and lifecycle.ts) and returned as 500s.
+    const errorLogsAlarm = (id: string, alarmName: string, logGroup: logs.LogGroup, description: string) => {
       const filter = new logs.MetricFilter(this, `${id}Filter`, {
         logGroup,
         filterPattern: logs.FilterPattern.stringValue('$.level', '=', 'ERROR'),
@@ -169,27 +316,64 @@ export class PitchDrillBackendStack extends cdk.Stack {
       });
     };
 
-    unhandledErrorsAlarm(
+    errorLogsAlarm(
       'PitchDrillUsersCannotSeeScheduleAlarm',
       'pitchdrill-users-cannot-see-schedule',
-      listSlots.logGroup,
+      logGroups.ListSlots!,
       'Visitors cannot load the list of bookable slots, so nobody can start a booking. ' +
         'Check ERROR lines in the PitchDrillListSlots log group and recent deploys.',
     );
-    unhandledErrorsAlarm(
+    errorLogsAlarm(
       'PitchDrillUsersCannotBookAlarm',
       'pitchdrill-users-cannot-book',
-      createBooking.logGroup,
+      logGroups.CreateBooking!,
       'People are failing to book seller/buyer seats. Check ERROR lines in the PitchDrillCreateBooking ' +
         'log group, DynamoDB throttling on pitchdrill-main, and recent deploys.',
     );
-    unhandledErrorsAlarm(
+    errorLogsAlarm(
       'PitchDrillUsersCannotOpenTicketsAlarm',
       'pitchdrill-users-cannot-open-tickets',
-      getTicket.logGroup,
+      logGroups.GetTicket!,
       'People with valid ticket links cannot load their booking, so they cannot reach their round. ' +
         'Check ERROR lines in the PitchDrillGetTicket log group and DynamoDB health.',
     );
+    errorLogsAlarm(
+      'PitchDrillUsersCannotJoinRoundsAlarm',
+      'pitchdrill-users-cannot-join-rounds',
+      logGroups.JoinRound!,
+      'Sellers or buyers cannot get on camera for their round, so rounds will be cancelled as no-shows. ' +
+        'Check ERROR lines in PitchDrillJoinRound (IVS CreateParticipantToken / CreateChatToken permissions or limits).',
+    );
+    errorLogsAlarm(
+      'PitchDrillUsersCannotVoteAlarm',
+      'pitchdrill-users-cannot-vote',
+      logGroups.CastVote!,
+      'Spectators cannot vote Sold / Not sold after the buzzer. Check ERROR lines in PitchDrillCastVote and DynamoDB health.',
+    );
+    errorLogsAlarm(
+      'PitchDrillRoundsNotStartingAlarm',
+      'pitchdrill-rounds-not-starting',
+      logGroups.SlotTick!,
+      'Rounds may not open, start, end or be recorded on time: SlotTick logged errors. ' +
+        'Check ERROR lines in PitchDrillSlotTick (IVS stage/room/composition calls, DynamoDB).',
+    );
+    new cloudwatch.Alarm(this, 'PitchDrillRoundsUsingFallbackBriefsAlarm', {
+      alarmName: 'pitchdrill-rounds-using-fallback-briefs',
+      alarmDescription:
+        'Players are getting canned product briefs instead of fresh ones: OpenRouter generation keeps failing. ' +
+        'Check WARN lines in PitchDrillGenerateBriefs / PitchDrillSlotTick, the OpenRouter key in Secrets Manager and OpenRouter credit.',
+      metric: new cloudwatch.Metric({
+        namespace: 'PitchDrill',
+        metricName: 'BriefFallbackUsed',
+        dimensionsMap: { service: 'pitchdrill' },
+        statistic: 'Sum',
+        period: cdk.Duration.hours(1),
+      }),
+      threshold: 3,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
     new cloudwatch.Alarm(this, 'PitchDrillUsersGettingServerErrorsAlarm', {
       alarmName: 'pitchdrill-users-getting-server-errors',
       alarmDescription:
@@ -203,13 +387,18 @@ export class PitchDrillBackendStack extends cdk.Stack {
     });
 
     // ======================
-    // 5. OUTPUTS
+    // 6. OUTPUTS
     // ======================
 
     new cdk.CfnOutput(this, 'PitchDrillApiUrlOutput', {
       value: api.apiEndpoint,
       exportName: 'PitchDrillApiUrl',
       description: 'Base URL for the frontend (NEXT_PUBLIC_API_URL)',
+    });
+    new cdk.CfnOutput(this, 'PitchDrillRecordingsCdnDomainOutput', {
+      value: cdn.distributionDomainName,
+      exportName: 'PitchDrillRecordingsCdnDomain',
+      description: 'CloudFront domain serving replay HLS',
     });
   }
 }

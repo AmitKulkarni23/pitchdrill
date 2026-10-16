@@ -26,3 +26,54 @@ export interface CreateBookingResponse {
   ticket: string;
   booking: Booking;
 }
+
+export type RoundStatus = "paired" | "ready" | "live" | "cancelled" | "ended" | "closed";
+
+export interface Product {
+  name: string;
+  price: string;
+  tagline: string;
+}
+
+/** GET /rounds/{roundId}, /rounds/live, /replays. Never contains briefs. */
+export interface PublicRound {
+  roundId: string;
+  slotId: string;
+  status: RoundStatus;
+  sellerHandle: string;
+  buyerHandle: string;
+  startedAt?: string;
+  endsAt?: string;
+  endedAt?: string;
+  cancelReason?: "no_show" | "admin";
+  votesSold: number;
+  votesNotSold: number;
+  product?: Product;
+  replayUrl?: string;
+}
+
+export interface ChatToken {
+  token: string;
+  sessionExpirationTime?: string;
+  tokenExpirationTime?: string;
+}
+
+export interface JoinResponse {
+  role: Role;
+  stageToken: string;
+  chatToken: ChatToken;
+  round: PublicRound;
+}
+
+export interface BriefResponse {
+  role: Role;
+  product: Product;
+  brief: string;
+}
+
+export interface Comment {
+  commentId: string;
+  nickname: string;
+  text: string;
+  createdAt: string;
+}
