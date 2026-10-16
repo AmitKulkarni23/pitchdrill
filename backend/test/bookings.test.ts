@@ -1,27 +1,19 @@
 // Runs against DynamoDB Local; skipped unless DYNAMODB_ENDPOINT is set (see CLAUDE.md).
 import { beforeAll, describe, expect, test } from "bun:test";
-import { CreateTableCommand, DeleteTableCommand } from "@aws-sdk/client-dynamodb";
+import { GetCommand } from "@aws-sdk/lib-dynamodb";
 import { db, TABLE } from "../src/lib/db";
 import { createBooking, getBookingByTicket } from "../src/lib/bookings";
 import { slotsForDate } from "../src/lib/slots";
+import { createLocalTable } from "../src/dev/localTable";
 
 const slots = slotsForDate("2099-01-01");
 const NOW = Date.parse("2099-01-01T12:00:00.000Z"); // 4 AM Pacific, all of that day's slots are open
 let tick = 0; // distinct createdAt per booking so queue order is deterministic
 const book = (slotId: string, handle: string, role: string, now = NOW + tick++) => createBooking({ slotId, handle, role }, now);
+const get = async (PK: string, SK: string) => (await db.send(new GetCommand({ TableName: TABLE, Key: { PK, SK } }))).Item;
 
 describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("bookings", () => {
-  beforeAll(async () => {
-    await db.send(new DeleteTableCommand({ TableName: TABLE })).catch(() => {});
-    await db.send(
-      new CreateTableCommand({
-        TableName: TABLE,
-        BillingMode: "PAY_PER_REQUEST",
-        KeySchema: [{ AttributeName: "PK", KeyType: "HASH" }, { AttributeName: "SK", KeyType: "RANGE" }],
-        AttributeDefinitions: [{ AttributeName: "PK", AttributeType: "S" }, { AttributeName: "SK", AttributeType: "S" }],
-      }),
-    );
-  });
+  beforeAll(createLocalTable);
 
   test("pairs first-come-first-serve; extra seller waits", async () => {
     const s = slots[0]!;
@@ -31,14 +23,25 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("bookings", () => {
     const jo = await book(s, "jo_1", "buyer");
     const kai = await book(s, "kai", "seller");
 
-    expect(amit.booking.roundId).toBeUndefined();
-    expect(riya.booking.opponentHandle).toBe("amit");
+    expect(amit.booking).toMatchObject({ status: "waiting" });
+    expect(riya.booking).toMatchObject({ status: "paired", opponentHandle: "amit" });
     expect(jo.booking.opponentHandle).toBe("sam");
     expect(kai.booking.roundId).toBeUndefined();
 
     const amitNow = await getBookingByTicket(amit.ticket);
-    expect(amitNow.opponentHandle).toBe("riya");
-    expect(amitNow.roundId).toBe(riya.booking.roundId!);
+    expect(amitNow).toMatchObject({ status: "paired", opponentHandle: "riya", roundId: riya.booking.roundId });
+    expect((await getBookingByTicket(sam.ticket)).status).toBe("paired");
+  });
+
+  test("pairing writes ROUND#/META and a slot index item; STATS stay in sync", async () => {
+    const s = slots[6]!;
+    for (const h of ["s_a", "s_b", "s_c"]) await book(s, h, "seller");
+    const b1 = await book(s, "b_a", "buyer");
+    await book(s, "b_b", "buyer");
+    const roundId = b1.booking.roundId!;
+    expect(await get(`ROUND#${roundId}`, "META")).toMatchObject({ roundId, slotId: s, sellerHandle: "s_a", buyerHandle: "b_a", status: "paired", votesSold: 0, votesNotSold: 0 });
+    expect(await get(`SLOT#${s}`, `ROUND#${roundId}`)).toEqual({ PK: `SLOT#${s}`, SK: `ROUND#${roundId}`, roundId });
+    expect(await get(`SLOT#${s}`, "STATS")).toMatchObject({ sellers: 3, buyers: 2, waitingSellers: 1, rounds: 2 });
   });
 
   test("handle is unique per slot, case-insensitive", async () => {

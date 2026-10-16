@@ -5,10 +5,11 @@ import { db, TABLE } from "./db";
 import { isBookable, isValidSlot } from "./slots";
 import { hashTicket, newTicket } from "./tickets";
 import { UserError } from "./http";
-import { metrics } from "./observability";
+import { logger, metrics } from "./observability";
 import { MetricUnit } from "@aws-lambda-powertools/metrics";
 
 export type Role = "seller" | "buyer";
+export type BookingStatus = "waiting" | "paired" | "no_opponent";
 const HANDLE_RE = /^[A-Za-z0-9_]{3,20}$/;
 const MAX_ATTEMPTS = 5;
 /** At most this many sellers and this many buyers per slot, so at most this many rounds. */
@@ -20,9 +21,77 @@ export interface Booking {
   handle: string;
   role: Role;
   createdAt: string;
+  status: BookingStatus;
   roundId?: string;
   opponentHandle?: string;
 }
+
+type TransactItems = NonNullable<ConstructorParameters<typeof TransactWriteCommand>[0]["TransactItems"]>;
+/** A WAIT# queue item as read back from the slot partition. */
+interface Waiter {
+  SK: string;
+  bookingId: string;
+  handle: string;
+}
+
+const other = (role: Role): Role => (role === "seller" ? "buyer" : "seller");
+const waitingAttr = (role: Role) => (role === "seller" ? "waitingSellers" : "waitingBuyers");
+
+/** Round META + slot index item for a new pair. Shared by booking-time and slot-time pairing. */
+function roundWrites(slotId: string, roundId: string, seller: { bookingId: string; handle: string }, buyer: { bookingId: string; handle: string }): TransactItems {
+  return [
+    {
+      Put: {
+        TableName: TABLE,
+        Item: {
+          PK: `ROUND#${roundId}`,
+          SK: "META",
+          roundId,
+          slotId,
+          sellerBookingId: seller.bookingId,
+          sellerHandle: seller.handle,
+          buyerBookingId: buyer.bookingId,
+          buyerHandle: buyer.handle,
+          status: "paired",
+          votesSold: 0,
+          votesNotSold: 0,
+        },
+        ConditionExpression: "attribute_not_exists(PK)",
+      },
+    },
+    { Put: { TableName: TABLE, Item: { PK: `SLOT#${slotId}`, SK: `ROUND#${roundId}`, roundId } } },
+  ];
+}
+
+/** Takes a waiter out of the queue and pairs its booking. The conditional delete stops a waiter from being paired twice. */
+function dequeueWrites(slotId: string, waiter: Waiter, roundId: string, opponentHandle: string): TransactItems {
+  const pk = `SLOT#${slotId}`;
+  return [
+    { Delete: { TableName: TABLE, Key: { PK: pk, SK: waiter.SK }, ConditionExpression: "attribute_exists(PK)" } },
+    {
+      Update: {
+        TableName: TABLE,
+        Key: { PK: pk, SK: `BOOKING#${waiter.bookingId}` },
+        UpdateExpression: "SET roundId = :r, opponentHandle = :h, #s = :paired",
+        ExpressionAttributeNames: { "#s": "status" },
+        ExpressionAttributeValues: { ":r": roundId, ":h": opponentHandle, ":paired": "paired" },
+      },
+    },
+  ];
+}
+
+const oldestWaiters = async (slotId: string, role: Role, limit?: number): Promise<Waiter[]> =>
+  ((
+    await db.send(
+      new QueryCommand({
+        TableName: TABLE,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :wait)",
+        ExpressionAttributeValues: { ":pk": `SLOT#${slotId}`, ":wait": `WAIT#${role}#` },
+        Limit: limit,
+        ConsistentRead: true,
+      }),
+    )
+  ).Items ?? []) as Waiter[];
 
 /**
  * Books a slot and pairs with the oldest unpaired booking of the other role, if any.
@@ -38,26 +107,19 @@ export async function createBooking(input: { slotId: unknown; handle: unknown; r
   if (role !== "seller" && role !== "buyer") throw new UserError(400, "bad_role", "Role must be seller or buyer.");
 
   const pk = `SLOT#${slotId}`;
-  const other: Role = role === "seller" ? "buyer" : "seller";
   const ticket = newTicket();
-  const booking: Booking = { slotId, bookingId: randomUUID(), handle, role, createdAt: new Date(now).toISOString() };
+  const base = { slotId, bookingId: randomUUID(), handle, role: role as Role, createdAt: new Date(now).toISOString() };
 
-  // ponytail: a seller and buyer booking at the same instant can both see an empty queue and both wait.
-  // Fix with a sweep at slot time that pairs leftover waiters if it shows up in practice.
+  // Two bookings at the same instant can both see an empty queue and both wait; SlotTick pairs them at T-5m.
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const { Items } = await db.send(
-      new QueryCommand({
-        TableName: TABLE,
-        KeyConditionExpression: "PK = :pk AND begins_with(SK, :wait)",
-        ExpressionAttributeValues: { ":pk": pk, ":wait": `WAIT#${other}#` },
-        Limit: 1,
-      }),
-    );
-    const waiting = Items?.[0];
+    const [waiting] = await oldestWaiters(slotId, other(role), 1);
     const roundId = waiting ? randomUUID() : undefined;
-    const mine: Booking = waiting ? { ...booking, roundId, opponentHandle: waiting.handle } : booking;
+    const mine: Booking = waiting
+      ? { ...base, status: "paired", roundId, opponentHandle: waiting.handle }
+      : { ...base, status: "waiting" };
 
-    const writes: NonNullable<ConstructorParameters<typeof TransactWriteCommand>[0]["TransactItems"]> = [
+    const writes: TransactItems = [
+      // Index 0: handle guard (CancellationReasons[0] → handle_taken).
       {
         Put: {
           TableName: TABLE,
@@ -65,52 +127,28 @@ export async function createBooking(input: { slotId: unknown; handle: unknown; r
           ConditionExpression: "attribute_not_exists(PK)",
         },
       },
+      // Index 1: seat cap plus queue/round counters, one item (CancellationReasons[1] → slot_full).
       {
-        // Seat cap: one counter per role on the slot's STATS item, checked in the same transaction.
         Update: {
           TableName: TABLE,
           Key: { PK: pk, SK: "STATS" },
-          UpdateExpression: "ADD #role :one",
+          UpdateExpression: waiting ? "ADD #role :one, #wait :minus, rounds :one" : "ADD #role :one, #wait :one",
           ConditionExpression: "attribute_not_exists(#role) OR #role < :max",
-          ExpressionAttributeNames: { "#role": `${role}s` },
-          ExpressionAttributeValues: { ":one": 1, ":max": MAX_PER_ROLE },
+          ExpressionAttributeNames: { "#role": `${role}s`, "#wait": waitingAttr(waiting ? other(role) : role) },
+          ExpressionAttributeValues: { ":one": 1, ":max": MAX_PER_ROLE, ...(waiting && { ":minus": -1 }) },
         },
       },
-      { Put: { TableName: TABLE, Item: { PK: `TICKET#${hashTicket(ticket)}`, SK: "TICKET", slotId, bookingId: booking.bookingId } } },
-      { Put: { TableName: TABLE, Item: { PK: pk, SK: `BOOKING#${booking.bookingId}`, ...mine } } },
+      { Put: { TableName: TABLE, Item: { PK: `TICKET#${hashTicket(ticket)}`, SK: "TICKET", slotId, bookingId: base.bookingId } } },
+      { Put: { TableName: TABLE, Item: { PK: pk, SK: `BOOKING#${base.bookingId}`, ...mine } } },
     ];
-    if (waiting) {
+    if (waiting && roundId) {
       const [seller, buyer] = role === "seller" ? [mine, waiting] : [waiting, mine];
-      writes.push(
-        { Delete: { TableName: TABLE, Key: { PK: pk, SK: waiting.SK }, ConditionExpression: "attribute_exists(PK)" } },
-        {
-          Update: {
-            TableName: TABLE,
-            Key: { PK: pk, SK: `BOOKING#${waiting.bookingId}` },
-            UpdateExpression: "SET roundId = :r, opponentHandle = :h",
-            ExpressionAttributeValues: { ":r": roundId, ":h": handle },
-          },
-        },
-        {
-          Put: {
-            TableName: TABLE,
-            Item: {
-              PK: pk,
-              SK: `ROUND#${roundId}`,
-              roundId,
-              sellerBookingId: seller.bookingId,
-              sellerHandle: seller.handle,
-              buyerBookingId: buyer.bookingId,
-              buyerHandle: buyer.handle,
-            },
-          },
-        },
-      );
+      writes.push(...dequeueWrites(slotId, waiting, roundId, handle), ...roundWrites(slotId, roundId, seller, buyer));
     } else {
       writes.push({
         Put: {
           TableName: TABLE,
-          Item: { PK: pk, SK: `WAIT#${role}#${booking.createdAt}#${booking.bookingId}`, bookingId: booking.bookingId, handle },
+          Item: { PK: pk, SK: `WAIT#${role}#${base.createdAt}#${base.bookingId}`, bookingId: base.bookingId, handle },
         },
       });
     }
@@ -119,6 +157,7 @@ export async function createBooking(input: { slotId: unknown; handle: unknown; r
       await db.send(new TransactWriteCommand({ TransactItems: writes }));
       metrics.addMetric("BookingCreated", MetricUnit.Count, 1);
       if (waiting) metrics.addMetric("RoundPaired", MetricUnit.Count, 1);
+      logger.info("Booking created", { slotId, bookingId: base.bookingId, role, roundId });
       return { ticket, booking: mine };
     } catch (e) {
       if (!(e instanceof TransactionCanceledException)) throw e;
@@ -128,14 +167,89 @@ export async function createBooking(input: { slotId: unknown; handle: unknown; r
       if (reasons[1]?.Code === "ConditionalCheckFailed")
         throw new UserError(409, "slot_full", `All ${MAX_PER_ROLE} ${role} seats in this slot are taken. Try another time.`);
       // Someone else grabbed our opponent (or a transaction conflict): look again.
+      logger.info("Booking transaction retry", { slotId, attempt, reasons: reasons.map((r) => r.Code) });
     }
   }
   throw new UserError(503, "busy", "This slot is busy right now. Please try again.");
 }
 
+/**
+ * Slot-time sweep: pairs leftover waiters oldest-first, then marks whoever is left `no_opponent`.
+ * Safe to run more than once: every write is conditional on the WAIT# item still existing.
+ */
+export async function sweepWaiters(slotId: string): Promise<void> {
+  const pk = `SLOT#${slotId}`;
+  const [sellers, buyers] = await Promise.all([oldestWaiters(slotId, "seller"), oldestWaiters(slotId, "buyer")]);
+  const pairs = Math.min(sellers.length, buyers.length);
+  for (let i = 0; i < pairs; i++) {
+    const [seller, buyer] = [sellers[i]!, buyers[i]!];
+    const roundId = randomUUID();
+    try {
+      await db.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            {
+              Update: {
+                TableName: TABLE,
+                Key: { PK: pk, SK: "STATS" },
+                UpdateExpression: "ADD waitingSellers :minus, waitingBuyers :minus, rounds :one",
+                ExpressionAttributeValues: { ":minus": -1, ":one": 1 },
+              },
+            },
+            ...dequeueWrites(slotId, seller, roundId, buyer.handle),
+            ...dequeueWrites(slotId, buyer, roundId, seller.handle),
+            ...roundWrites(slotId, roundId, seller, buyer),
+          ],
+        }),
+      );
+      metrics.addMetric("RoundPaired", MetricUnit.Count, 1);
+      logger.info("Paired leftover waiters", { slotId, roundId });
+    } catch (e) {
+      if (!(e instanceof TransactionCanceledException)) throw e;
+      logger.info("Leftover pair already handled", { slotId });
+    }
+  }
+  const leftovers: [Role, Waiter][] = [
+    ...sellers.slice(pairs).map((w) => ["seller", w] as [Role, Waiter]),
+    ...buyers.slice(pairs).map((w) => ["buyer", w] as [Role, Waiter]),
+  ];
+  for (const [role, w] of leftovers) {
+    try {
+      await db.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            { Delete: { TableName: TABLE, Key: { PK: pk, SK: w.SK }, ConditionExpression: "attribute_exists(PK)" } },
+            {
+              Update: {
+                TableName: TABLE,
+                Key: { PK: pk, SK: `BOOKING#${w.bookingId}` },
+                UpdateExpression: "SET #s = :s",
+                ExpressionAttributeNames: { "#s": "status" },
+                ExpressionAttributeValues: { ":s": "no_opponent" },
+              },
+            },
+            {
+              Update: {
+                TableName: TABLE,
+                Key: { PK: pk, SK: "STATS" },
+                UpdateExpression: "ADD #w :minus",
+                ExpressionAttributeNames: { "#w": waitingAttr(role) },
+                ExpressionAttributeValues: { ":minus": -1 },
+              },
+            },
+          ],
+        }),
+      );
+      logger.info("No opponent for booking", { slotId, bookingId: w.bookingId, role });
+    } catch (e) {
+      if (!(e instanceof TransactionCanceledException)) throw e;
+    }
+  }
+}
+
 /** Looks up the booking a ticket belongs to. */
 export async function getBookingByTicket(ticket: unknown): Promise<Booking> {
-  if (typeof ticket !== "string" || !ticket) throw new UserError(401, "no_ticket", "Missing ticket.");
+  if (typeof ticket !== "string" || !ticket || ticket.length > 100) throw new UserError(401, "no_ticket", "Missing ticket.");
   const { Item: t } = await db.send(new GetCommand({ TableName: TABLE, Key: { PK: `TICKET#${hashTicket(ticket)}`, SK: "TICKET" } }));
   if (!t) throw new UserError(404, "bad_ticket", "That ticket isn't valid.");
   const { Item } = await db.send(new GetCommand({ TableName: TABLE, Key: { PK: `SLOT#${t.slotId}`, SK: `BOOKING#${t.bookingId}` } }));
