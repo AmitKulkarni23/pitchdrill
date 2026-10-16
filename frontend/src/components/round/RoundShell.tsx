@@ -33,7 +33,7 @@ export function RoundClock({ round, now }: { round: PublicRound; now: number }) 
           : ["Starting", "waiting for both players…", false]
         : round.status === "cancelled"
           ? ["Cancelled", round.cancelReason === "no_show" ? "a player didn't show up" : "ended by a moderator", false]
-          : ["Finished", "vote below", false];
+          : ["Played", new Date(round.startedAt ?? round.slotId).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }), false];
   return (
     <Box role="timer" aria-live="off" sx={{ display: "flex", alignItems: "baseline", gap: 1.5, flexWrap: "wrap" }}>
       <Typography sx={{ fontWeight: 800, color: live ? hall.live : hall.ink, fontSize: 15 }}>{live && "● "}{label}</Typography>
