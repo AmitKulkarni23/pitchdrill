@@ -33,6 +33,7 @@ function TicketPage() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [join, setJoin] = useState<JoinResponse | null>(null);
+  const [camera, setCamera] = useState(true);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [brief, setBrief] = useState<BriefResponse | null>(null);
   const { round, refresh } = useRound(booking?.roundId);
@@ -65,8 +66,9 @@ function TicketPage() {
     return () => clearInterval(id);
   }, [briefDue, brief, booking, ticket]);
 
-  async function joinRound() {
+  async function joinRound(withCamera: boolean) {
     setJoinError(null);
+    setCamera(withCamera);
     try {
       setJoin(await api.post<JoinResponse>(`/rounds/${booking!.roundId}/join`, {}, { ticket }));
     } catch (e) {
@@ -111,7 +113,7 @@ function TicketPage() {
           <Typography>The arena opens 5 minutes before the start ({countdown(start - OPEN_BEFORE - now)} from now). Keep this page open; it updates on its own.</Typography>
         </Box>
       )}
-      {round.status === "cancelled" && <Alert severity="info">{round.cancelReason === "no_show" ? "Both players have to be on camera when the round starts. Book another slot to try again." : "A moderator ended this round."}</Alert>}
+      {round.status === "cancelled" && <Alert severity="info">{round.cancelReason === "no_show" ? "Both players have to join when the round starts. Book another slot to try again." : "A moderator ended this round."}</Alert>}
       {finished && (
         <Box sx={{ ...panel, p: 3, display: "grid", gap: 1 }}>
           <Typography>Time&apos;s up. See how the audience voted and watch the replay.</Typography>
@@ -122,12 +124,15 @@ function TicketPage() {
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr" }, gap: 2.5, alignItems: "start" }}>
           <Box sx={{ display: "grid", gap: 2 }}>
             {join ? (
-              <StageVideo token={join.stageToken} publish sellerHandle={round.sellerHandle} buyerHandle={round.buyerHandle} />
+              <StageVideo token={join.stageToken} publish camera={camera} sellerHandle={round.sellerHandle} buyerHandle={round.buyerHandle} />
             ) : (
               <Box sx={{ ...panel, p: 3, display: "grid", gap: 1.5 }}>
-                <Typography>Turn your camera on now. The round starts when both of you are on camera at the start time; if someone is missing a minute after, it&apos;s cancelled.</Typography>
+                <Typography>Join now, on camera or mic only. The round starts when both of you are in at the start time; if someone is missing a minute after, it&apos;s cancelled.</Typography>
                 {joinError && <Alert severity="error">{joinError}</Alert>}
-                <Button variant="contained" size="large" onClick={joinRound} sx={{ justifySelf: "start" }}>Join with camera</Button>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
+                  <Button variant="contained" size="large" onClick={() => joinRound(true)}>Join with camera</Button>
+                  <Button variant="outlined" size="large" onClick={() => joinRound(false)}>Join with mic only</Button>
+                </Box>
               </Box>
             )}
           </Box>

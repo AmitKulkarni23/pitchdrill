@@ -81,7 +81,7 @@ All of it is one CDK stack, `PitchDrillBackendStack` (`infra/lib/backend-stack.t
 | API exposure | Public routes have no authorizer (opened 2026-10-15 for local frontend development; per-route throttles are the only abuse limit). Admin routes stay IAM-only forever. |
 | Rate limiting | HTTP API per-route throttles (all users combined). Default 50 rps / burst 100; `POST /bookings` 10/20; reads 20/40; votes/comments/chat tokens 20/40; reports 5/10. |
 | CORS | `http://localhost:3000` (+ Vercel domain in TASK-021). |
-| Live video | IVS Real-Time: one stage per round. Seller/buyer get PUBLISH+SUBSCRIBE tokens; spectators SUBSCRIBE-only (~0.3s latency). |
+| Live video | IVS Real-Time: one stage per round. Seller/buyer get PUBLISH+SUBSCRIBE tokens; spectators SUBSCRIBE-only (~0.3s latency). Players join on camera or mic only (camera can be muted mid-round); publishing audio alone counts as present. |
 | Recording | IVS server-side composition (grid layout, split screen) to S3, served via CloudFront (OAC). |
 | Chat | IVS Chat: one room per round. Spectators get SEND_MESSAGE tokens with their nickname; participants get receive-only tokens. Server events (round started, buzzer, tally) are sent with `SendEvent`. |
 | Briefs | OpenRouter, random product, generated when a round is paired (DynamoDB stream). Model ID is the CDK constant `OPENROUTER_MODEL` = `anthropic/claude-haiku-5.5` (chosen by the user). Fallback product list if generation fails. |
@@ -178,7 +178,7 @@ sequenceDiagram
   API->>API: ticket's booking is the seller/buyer of this round? status ready/live?
   API->>IVS: CreateParticipantToken(stageArn, userId=bookingId,<br/>attributes {handle, role}, PUBLISH+SUBSCRIBE)
   API-->>A: { stageToken, chatToken }
-  A->>IVS: Stage.join(stageToken) — camera on
+  A->>IVS: Stage.join(stageToken) — mic, plus camera unless they chose mic only
 ```
 
 ### Spectator

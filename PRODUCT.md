@@ -14,7 +14,7 @@ Next.js (App Router) on Vercel, MUI with `sx` props (no CSS Modules, no Tailwind
 
 ## Users
 
-- **Sellers**: anyone who wants to practise selling. They book a slot, show up on camera at a set time, and get 60 seconds to sell a product they only learn about 30 seconds before the round.
+- **Sellers**: anyone who wants to practise selling. They book a slot, show up at a set time (on camera or mic only), and get 60 seconds to sell a product they only learn about 30 seconds before the round.
 - **Buyers**: anyone who wants to practise objection handling or play the skeptic. They get a hidden persona (budget, doubts, reasons to say no) and push back.
 - **Watchers (learners)**: anyone with the link. Watching is a first-class way to learn, not a side audience: they browse and watch rounds live or as replays, chat under a nickname, vote "Sold" / "Not sold", and comment. Many people watch several rounds before they ever book one.
 - (inferred) Typical seller/buyer: early-career salespeople, founders, job-seekers preparing for "sell me this pen" interviews, joining from a laptop or phone at home in the evening.
