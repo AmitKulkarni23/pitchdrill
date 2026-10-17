@@ -101,8 +101,10 @@ cd backend && bun run build        # bundles handlers to backend/dist (infra run
 docker run -d --rm --name pitchdrill-ddb -p 8000:8000 amazon/dynamodb-local
 cd backend && bun run test:local
 
-# Local API on :4000 against DynamoDB Local (IVS/OpenRouter are real, via your AWS profile)
-cd backend && bun run dev:table && bun run dev
+# Local API on :4000 against DynamoDB Local (IVS/OpenRouter are real, via your AWS profile).
+# Starts the pitchdrill-ddb container and creates the table if either is missing; existing data is kept.
+cd backend && bun run dev
+cd backend && bun run dev:table                     # wipe and recreate the local table
 curl -X POST "localhost:4000/dev/tick?now=<iso>"   # run SlotTick at any time
 ```
 

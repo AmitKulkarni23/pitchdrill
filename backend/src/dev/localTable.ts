@@ -1,4 +1,4 @@
-import { CreateTableCommand, DeleteTableCommand } from "@aws-sdk/client-dynamodb";
+import { CreateTableCommand, DeleteTableCommand, DescribeTableCommand } from "@aws-sdk/client-dynamodb";
 import { db, TABLE } from "../lib/db";
 
 /** (Re)creates pitchdrill-main in DynamoDB Local with the same keys and GSI1 as production. */
@@ -22,4 +22,7 @@ export async function createLocalTable() {
   );
 }
 
-if (import.meta.main) await createLocalTable().then(() => console.log(`Created ${TABLE} in DynamoDB Local`));
+// `--keep` (used by `bun run dev`) leaves an existing table and its data alone.
+const exists = () => db.send(new DescribeTableCommand({ TableName: TABLE })).then(() => true, () => false);
+if (import.meta.main && !(process.argv.includes("--keep") && (await exists())))
+  await createLocalTable().then(() => console.log(`Created ${TABLE} in DynamoDB Local`));
