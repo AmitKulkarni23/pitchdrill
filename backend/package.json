@@ -7,7 +7,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "test:local": "AWS_REGION=us-west-2 AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local DYNAMODB_ENDPOINT=http://localhost:8000 bun test",
-    "dev": "docker run -d --rm --name pitchdrill-ddb -p 8000:8000 amazon/dynamodb-local >/dev/null 2>&1; until curl -s localhost:8000 >/dev/null; do sleep 0.2; done && bun run dev:table --keep && AWS_REGION=us-west-2 DYNAMODB_ENDPOINT=http://localhost:8000 OPENROUTER_MODEL_ENV=anthropic/claude-haiku-5.5 bun --watch src/dev/server.ts",
+    "dev": "docker run -d --rm --name pitchdrill-ddb -p 8000:8000 amazon/dynamodb-local >/dev/null 2>&1; until curl -s localhost:8000 >/dev/null; do sleep 0.2; done && bun run dev:table --keep && AWS_REGION=us-west-2 DYNAMODB_ENDPOINT=http://localhost:8000 OPENROUTER_SECRET_ARN_ENV=pitchdrill/openrouter-api-key OPENROUTER_MODEL_ENV=anthropic/claude-haiku-5.5 bun --watch src/dev/server.ts",
     "dev:table": "AWS_REGION=us-west-2 DYNAMODB_ENDPOINT=http://localhost:8000 bun src/dev/localTable.ts"
   },
   "dependencies": {
