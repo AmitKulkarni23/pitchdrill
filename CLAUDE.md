@@ -132,7 +132,7 @@ A failed *first* create strands the retained `pitchdrill-main` table; delete it 
 
 ### Vercel
 
-Project `pitchdrill` (scope `amits-projects-684cec17`), root directory `frontend`, Bun install/build, `NEXT_PUBLIC_API_URL` set for production + preview. Deployment protection is Vercel Authentication on all deployments except custom domains (there are none), so nothing is public. Git auto-deploy is pending TASK-020 (the Vercel GitHub app needs access to the repo). `pitchdrill.vercel.app` is an unrelated site, not ours.
+Project `pitchdrill` (scope `amits-projects-684cec17`), root directory `frontend`, Bun install/build, `NEXT_PUBLIC_API_URL` set for production + preview. Deployment protection is Vercel Authentication on all deployments except custom domains (there are none), so nothing is public. Connected to GitHub: pushes to `master` deploy production, other branches deploy previews. `pitchdrill.vercel.app` is an unrelated site, not ours.
 
 ```bash
 vercel deploy                              # protected preview from the repo root

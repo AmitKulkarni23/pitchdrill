@@ -30,7 +30,7 @@ Done before these specs (phase 1): booking core, ticket lookup, slots, CDK stack
 - ~~[TASK-017 — Participant arena (split screen, brief, timer)](frontend/017-participant-arena.md) · depends on: 007, 009, 016~~ (functional build, 2026-10-15; design polish pending)
 - ~~[TASK-018 — Live rounds, spectator view, chat and voting](frontend/018-spectator-live.md) · depends on: 010, 011, 017 · also fills the home Watch panel with live tiles (see the approved mockup in CLAUDE.md → Design System)~~ (functional build, 2026-10-15; design polish pending)
 - ~~[TASK-019 — Replay page, comments, reports and replay feed](frontend/019-replays.md) · depends on: 012, 013, 018 · the feed is the home "Past rounds" list from the approved mockup~~ (functional build, 2026-10-15; design polish pending)
-- [TASK-020 — Vercel deployment](frontend/020-vercel-deploy.md) · depends on: 014
+- ~~[TASK-020 — Vercel deployment](frontend/020-vercel-deploy.md) · depends on: 014~~
 
 ## Go Live
 
