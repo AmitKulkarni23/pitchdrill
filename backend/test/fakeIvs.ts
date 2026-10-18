@@ -37,6 +37,7 @@ export function installFakeIvs() {
     },
     deleteRoom: async (arn: string) => void fake.rooms.delete(arn),
     publishingUserIds: async (stageArn: string) => fake.publishing.get(stageArn) ?? [],
+    waitForPublishers: async (stageArn: string) => fake.publishing.get(stageArn) ?? [],
     startComposition: async (_stageArn: string, roundId: string) => ({ compositionArn: `composition/${roundId}`, recordingPrefix: `prefix/${roundId}` }),
     stopComposition: async () => {},
     stageToken: async (_arn: string, userId: string, _a: unknown, publish: boolean) => ({ token: `stage:${userId}:${publish ? "pub" : "sub"}` }),

@@ -1,19 +1,22 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { useParams } from "next/navigation";
 import { Alert, Box, Typography } from "@mui/material";
 import { ChatPanel, type RoundEvent } from "@/components/round/ChatPanel";
 import { CommentsPanel } from "@/components/round/CommentsPanel";
 import { ReplayVideo } from "@/components/round/ReplayVideo";
-import { RoundClock, RoundShell } from "@/components/round/RoundShell";
+import { BriefList, RoundClock, RoundShell } from "@/components/round/RoundShell";
 import { StageVideo } from "@/components/round/StageVideo";
 import { VotePanel } from "@/components/round/VotePanel";
 import { hall, panel } from "@/config/tokens";
 import { useNow } from "@/hooks/useClock";
 import { useRound } from "@/hooks/useRound";
 import { api, ApiError } from "@/lib/api";
-import { getVoterId } from "@/lib/storage";
+import { getVoterId, hasPlayed } from "@/lib/storage";
+import type { BriefPoints } from "@/types/api";
+
+const noop = () => () => {};
 
 /** Spectator page: live split screen + chat while the round runs, then votes, replay and comments. */
 // useParams needs a Suspense boundary with cacheComponents; the page itself is all client-side.
@@ -32,6 +35,8 @@ function WatchPage() {
   const [token, setToken] = useState<string | null>(null);
   const [watchError, setWatchError] = useState<string | null>(null);
   const liveish = round?.status === "ready" || round?.status === "live";
+  // The seller and buyer don't vote or comment on their own round (per browser, like the one-vote rule).
+  const played = useSyncExternalStore(noop, () => hasPlayed(roundId), () => false);
 
   useEffect(() => {
     if (!liveish || token) return;
@@ -81,10 +86,10 @@ function WatchPage() {
               tint={hall.buyer}
             />
           </Box>
-          {(round.status === "ended" || round.status === "closed") && <CommentsPanel roundId={round.roundId} open />}
+          {(round.status === "ended" || round.status === "closed") && <CommentsPanel roundId={round.roundId} open={!played} />}
         </Box>
         <Box sx={{ display: "grid", gap: 2.5 }}>
-          <VotePanel round={round} tally={round} onTally={(t) => setRound((r) => r && { ...r, ...t })} />
+          <VotePanel round={round} tally={round} onTally={(t) => setRound((r) => r && { ...r, ...t })} played={played} />
           {(liveish || round.status === "ended") && <ChatPanel roundId={round.roundId} onEvent={onEvent} />}
         </Box>
       </Box>
@@ -93,7 +98,7 @@ function WatchPage() {
 }
 
 /** One side of the round: who played it and what they were given. */
-function BriefCard({ side, handle, heading, text, hiddenNote, tint }: { side: string; handle: string; heading: string; text?: string; hiddenNote: string; tint: string }) {
+function BriefCard({ side, handle, heading, text, hiddenNote, tint }: { side: string; handle: string; heading: string; text?: BriefPoints; hiddenNote: string; tint: string }) {
   return (
     <Box component="section" aria-label={`${side} brief`} sx={{ ...panel, overflow: "hidden" }}>
       <Box sx={{ bgcolor: tint, px: 2, py: 1.25 }}>
@@ -103,9 +108,7 @@ function BriefCard({ side, handle, heading, text, hiddenNote, tint }: { side: st
       </Box>
       <Box sx={{ p: 2, display: "grid", gap: 0.75 }}>
         <Typography sx={{ fontWeight: 700, fontSize: 14 }}>{heading}</Typography>
-        <Typography variant="body2" sx={{ color: text ? hall.ink : hall.muted, whiteSpace: "pre-wrap" }}>
-          {text ?? hiddenNote}
-        </Typography>
+        <BriefList points={text ?? hiddenNote} muted={!text} />
       </Box>
     </Box>
   );

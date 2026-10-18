@@ -10,7 +10,7 @@ import type { PublicRound } from "@/types/api";
 type Tally = { votesSold: number; votesNotSold: number };
 
 /** "Sold" / "Not sold", once per browser, from the buzzer on (replays too). Shows the tally always. */
-export function VotePanel({ round, tally, onTally }: { round: PublicRound; tally: Tally; onTally: (t: Tally) => void }) {
+export function VotePanel({ round, tally, onTally, played }: { round: PublicRound; tally: Tally; onTally: (t: Tally) => void; played?: boolean }) {
   const [voted, setVoted] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const open = round.status === "ended" || round.status === "closed";
@@ -33,13 +33,14 @@ export function VotePanel({ round, tally, onTally }: { round: PublicRound; tally
   return (
     <Box component="section" aria-label="Votes" sx={{ ...panel, p: 2, display: "grid", gap: 1.5 }}>
       <Typography sx={{ fontWeight: 800 }}>Did the seller close?</Typography>
-      {open && !voted && (
+      {open && !voted && !played && (
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button variant="contained" onClick={() => vote("sold")} sx={{ flex: 1 }}>Sold</Button>
           <Button variant="outlined" onClick={() => vote("not_sold")} sx={{ flex: 1 }}>Not sold</Button>
         </Box>
       )}
-      {!open && <Typography variant="body2" sx={{ color: hall.muted }}>Voting opens at the buzzer.</Typography>}
+      {played && <Typography variant="body2" sx={{ color: hall.muted }}>You played this round, so you can&apos;t vote on it.</Typography>}
+      {!open && !played && <Typography variant="body2" sx={{ color: hall.muted }}>Voting opens at the buzzer.</Typography>}
       {voted && <Typography variant="body2" sx={{ color: hall.greenDeep, fontWeight: 700 }}>{voted === "already" ? "You already voted on this round." : "Vote counted. Thanks!"}</Typography>}
       {error && <Alert severity="error">{error}</Alert>}
       <Box aria-label={`${tally.votesSold} sold, ${tally.votesNotSold} not sold`} sx={{ display: "grid", gap: 0.5 }}>

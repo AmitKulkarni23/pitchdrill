@@ -47,6 +47,15 @@ export async function publishingUserIds(stageArn: string): Promise<string[]> {
   return (participants ?? []).filter((p) => p.published).map((p) => p.userId ?? "");
 }
 
+/** Polls every 2 s until every one of `userIds` is publishing or `until` (epoch ms) passes; returns who is publishing. */
+export async function waitForPublishers(stageArn: string, userIds: string[], until: number): Promise<string[]> {
+  for (;;) {
+    const publishing = await publishingUserIds(stageArn);
+    if (userIds.every((u) => publishing.includes(u)) || Date.now() + 2000 > until) return publishing;
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+}
+
 /** Starts split-screen recording; participants are ordered by their `order` token attribute (seller 1, buyer 2). */
 export async function startComposition(stageArn: string, roundId: string) {
   const { composition } = await stages.send(

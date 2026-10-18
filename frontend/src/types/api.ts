@@ -49,8 +49,8 @@ export interface PublicRound {
   votesSold: number;
   votesNotSold: number;
   product?: Product;
-  /** Seller sheet from live on; buyer persona only after the buzzer. */
-  briefs?: { seller: string; buyer?: string };
+  /** Seller sheet from live on; buyer persona only after the buzzer. Bullet points (a single string on older rounds). */
+  briefs?: { seller: BriefPoints; buyer?: BriefPoints };
   replayUrl?: string;
 }
 
@@ -70,8 +70,10 @@ export interface JoinResponse {
 export interface BriefResponse {
   role: Role;
   product: Product;
-  brief: string;
+  brief: BriefPoints;
 }
+
+export type BriefPoints = string[] | string;
 
 export interface Comment {
   commentId: string;

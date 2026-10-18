@@ -21,7 +21,7 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { routes } from '../../backend/src/routes';
 
 // Browser origins allowed to call the API and fetch replays. Add the Vercel domain once the frontend is live.
-const ALLOWED_ORIGINS = ['http://localhost:3000'];
+const ALLOWED_ORIGINS = ['http://localhost:3000', 'https://pitchdrill-azure.vercel.app'];
 // OpenRouter model for briefs (chosen by the user, 2026-10-15).
 const OPENROUTER_MODEL = 'anthropic/claude-haiku-5.5';
 
@@ -190,8 +190,9 @@ export class PitchDrillBackendStack extends cdk.Stack {
 
     // SlotTick drives every round through its lifecycle (docs/system_specs/architecture.md §4).
     // ponytail: no reserved concurrency (account limit is 10); overlapping ticks are safe because every transition is conditional.
+    // 90 s: the tick before a slot waits for T and polls up to 50 s for both players (lifecycle.ts START_POLL).
     const slotTick = makeFunction('SlotTick', {
-      timeout: cdk.Duration.seconds(60),
+      timeout: cdk.Duration.seconds(90),
       memorySize: 512,
       environment: {
         OPENROUTER_SECRET_ARN_ENV: openRouterSecret.secretArn,

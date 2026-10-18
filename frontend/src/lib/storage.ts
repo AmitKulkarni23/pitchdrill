@@ -1,6 +1,6 @@
 // Every read/write is guarded: storage can be missing or throw (private mode, blocked site data).
 
-const KEYS = { voterId: "pd.voterId", nickname: "pd.nickname", tickets: "pd.tickets" } as const;
+const KEYS = { voterId: "pd.voterId", nickname: "pd.nickname", tickets: "pd.tickets", played: "pd.playedRounds" } as const;
 
 function read(key: string): string | null {
   try {
@@ -39,6 +39,20 @@ export function getTickets(): string[] {
   } catch {
     return [];
   }
+}
+
+/** Rounds this browser played in, so its votes and comments panels stay closed. */
+const playedRounds = (): string[] => {
+  try {
+    const parsed = JSON.parse(read(KEYS.played) ?? "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+export const hasPlayed = (roundId: string): boolean => playedRounds().includes(roundId);
+export function addPlayedRound(roundId: string): void {
+  if (!hasPlayed(roundId)) write(KEYS.played, JSON.stringify([...playedRounds(), roundId]));
 }
 
 export function addTicket(ticket: string): void {

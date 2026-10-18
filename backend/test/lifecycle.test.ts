@@ -87,7 +87,7 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     const buyer = await api("GET", `/rounds/${r1}/brief`, undefined, t.riya!.ticket);
     const round = await getRound(r1);
     expect(seller.body).toEqual({ role: "seller", product: round!.briefs!.product, brief: round!.briefs!.seller });
-    expect(buyer.body.brief).toBe(round!.briefs!.buyer);
+    expect(buyer.body.brief).toEqual(round!.briefs!.buyer);
     expect((await api("GET", `/rounds/${r1}/brief`, undefined, t.sam!.ticket)).status).toBe(403);
     expect((await api("GET", `/rounds/${r1}/brief`)).status).toBe(401);
   });
@@ -108,14 +108,15 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     const [m1, m2] = [await getRound(r1), await getRound(r2)];
     fake.publishing.set(m1!.stageArn!, [m1!.sellerBookingId, m1!.buyerBookingId]);
     fake.publishing.set(m2!.stageArn!, [m2!.sellerBookingId]);
+    await at(T - 1000); // the tick just before T waits for T and starts on the dot
+    expect((await getRound(r1))!).toMatchObject({ status: "live", startedAt: SLOT });
     await at(T + 2000);
-    expect((await getRound(r1))!.status).toBe("live");
     expect((await getRound(r2))!.status).toBe("ready");
     expect(fake.events.some((e) => e.name === "round_started")).toBe(true);
     expect((await api("POST", `/rounds/${r1}/votes`, { voterId: voter(), vote: "sold" })).body.error.code).toBe("voting_closed");
     const live = (await api("GET", `/rounds/${r1}`)).body.round;
     expect(live.product.name).toBeString();
-    expect(live.briefs.seller).toBe((await getRound(r1))!.briefs!.seller);
+    expect(live.briefs.seller).toEqual((await getRound(r1))!.briefs!.seller);
     expect(live.briefs.buyer).toBeUndefined(); // persona stays hidden until the buzzer
     await at(T + MIN);
     const cancelled = await getRound(r2);
@@ -129,7 +130,7 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     expect(ended).toMatchObject({ status: "ended" });
     expect(fake.stages.has(ended!.stageArn!)).toBe(false);
     expect(fake.events.some((e) => e.name === "buzzer")).toBe(true);
-    expect((await api("GET", `/rounds/${r1}`)).body.round.briefs.buyer).toBe(ended!.briefs!.buyer);
+    expect((await api("GET", `/rounds/${r1}`)).body.round.briefs.buyer).toEqual(ended!.briefs!.buyer);
     const v = voter();
     expect((await api("POST", `/rounds/${r1}/votes`, { voterId: v, vote: "sold" })).body).toEqual({ votesSold: 1, votesNotSold: 0 });
     const again = await api("POST", `/rounds/${r1}/votes`, { voterId: v, vote: "not_sold" });

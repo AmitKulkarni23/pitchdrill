@@ -9,10 +9,10 @@ export interface Product {
 }
 export interface Briefs {
   product: Product;
-  /** Seller's product sheet. */
-  seller: string;
-  /** Buyer's hidden persona. Never shown to the seller. */
-  buyer: string;
+  /** Seller's product sheet, one point per item. */
+  seller: string[];
+  /** Buyer's hidden persona, one point per item. Never shown to the seller. */
+  buyer: string[];
   source: "openrouter" | "fallback";
 }
 
@@ -30,19 +30,21 @@ Invent ONE random, plausible, safe-for-work product (consumer or B2B; vary the c
 Return ONLY a JSON object with exactly these fields:
 {
   "product": { "name": string (max 60 chars), "price": string (e.g. "$49/month"), "tagline": string (max 100 chars) },
-  "seller": string — a product sheet for the seller, max 120 words: what it is, who it is for, 3 key benefits, price and one proof point,
-  "buyer": string — a hidden persona for the buyer, max 120 words, second person ("You are..."): who they are, budget, current solution, 2–3 objections, and what could change their mind
+  "seller": string[] — the seller's product sheet as 4–7 short bullet points (max 25 words each): what it is, who it is for, 3 key benefits, price and one proof point,
+  "buyer": string[] — the buyer's hidden persona as 4–7 short bullet points in second person (max 25 words each): who they are, budget, current solution, 2–3 objections, and what could change their mind
 }`;
 
 const str = (v: unknown, max: number) => typeof v === "string" && v.trim().length > 0 && v.length <= max;
+const points = (v: unknown) => Array.isArray(v) && v.length >= 2 && v.length <= 10 && v.every((x) => str(x, 300));
 
 /** Validates the model output; returns null when anything is missing or out of bounds. */
 export function parseBriefs(content: string): Briefs | null {
   try {
     const o = JSON.parse(content.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, ""));
     const p = o?.product;
-    if (!str(p?.name, 80) || !str(p?.price, 40) || !str(p?.tagline, 160) || !str(o.seller, 1200) || !str(o.buyer, 1200)) return null;
-    return { product: { name: p.name.trim(), price: p.price.trim(), tagline: p.tagline.trim() }, seller: o.seller.trim(), buyer: o.buyer.trim(), source: "openrouter" };
+    if (!str(p?.name, 80) || !str(p?.price, 40) || !str(p?.tagline, 160) || !points(o.seller) || !points(o.buyer)) return null;
+    const trim = (xs: string[]) => xs.map((x) => x.trim());
+    return { product: { name: p.name.trim(), price: p.price.trim(), tagline: p.tagline.trim() }, seller: trim(o.seller), buyer: trim(o.buyer), source: "openrouter" };
   } catch {
     return null;
   }

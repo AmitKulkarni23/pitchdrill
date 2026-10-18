@@ -2,7 +2,7 @@ import { Box, Typography } from "@mui/material";
 import { SiteHeader } from "@/components/home/SiteHeader";
 import { hall } from "@/config/tokens";
 import { countdown } from "@/lib/slots";
-import type { PublicRound } from "@/types/api";
+import type { BriefPoints, PublicRound } from "@/types/api";
 
 export function RoundShell({ title, subtitle, children }: { title: string; subtitle?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -19,6 +19,16 @@ export function RoundShell({ title, subtitle, children }: { title: string; subti
   );
 }
 
+/** A brief as a bulleted list; older rounds stored it as one paragraph. */
+export function BriefList({ points, muted }: { points: BriefPoints; muted?: boolean }) {
+  if (typeof points === "string") return <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: muted ? hall.muted : hall.ink }}>{points}</Typography>;
+  return (
+    <Box component="ul" sx={{ m: 0, pl: 2.5, display: "grid", gap: 0.5, typography: "body2" }}>
+      {points.map((p, i) => <li key={i}>{p}</li>)}
+    </Box>
+  );
+}
+
 /** Big status line: countdown to start, time left, buzzer, or outcome. */
 export function RoundClock({ round, now }: { round: PublicRound; now: number }) {
   const start = Date.parse(round.slotId);
@@ -28,9 +38,11 @@ export function RoundClock({ round, now }: { round: PublicRound; now: number }) 
         ? ["Time left", countdown(Date.parse(round.endsAt) - now), true]
         : ["Buzzer!", "0:00", false]
       : round.status === "ready" || round.status === "paired"
-        ? now < start
+        ? start - now > 3000
           ? ["Starts in", countdown(start - now), false]
-          : ["Starting", "waiting for both players…", false]
+          : now < start
+            ? ["Get ready", String(Math.ceil((start - now) / 1000)), false]
+            : ["Starting", "waiting for both players…", false]
         : round.status === "cancelled"
           ? ["Cancelled", round.cancelReason === "no_show" ? "a player didn't show up" : "ended by a moderator", false]
           : ["Played", new Date(round.startedAt ?? round.slotId).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }), false];

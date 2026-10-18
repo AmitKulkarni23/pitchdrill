@@ -15,6 +15,12 @@ const CLOSE_AFTER = 15 * MIN;
 const WINDOW_AFTER = 20 * MIN;
 /** A tick ends rounds whose buzzer falls within this lead, waiting the rest, so rounds last exactly 2 min, not up to 3. */
 const END_LEAD = 15_000;
+/**
+ * Ticks fire about once a minute, so the tick just before T waits for T, then polls the stage for up to START_POLL
+ * and starts the round the moment both sides publish. START_POLL stays under the tick interval so polls never overlap.
+ */
+const START_LEAD = MIN;
+const START_POLL = 50_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -48,7 +54,10 @@ async function stepRound(r: RoundMeta, t: number, now: number) {
     case "paired":
       return openRound(r);
     case "ready":
-      return now >= t ? startOrCancel(r, t, now) : undefined;
+      if (now >= t) return startOrCancel(r, t, now);
+      if (t - now > START_LEAD) return;
+      await sleep(t - now);
+      return startOrCancel(r, t, t, now + START_POLL);
     case "live": {
       const endAt = Date.parse(r.startedAt!) + ROUND_MS;
       if (endAt - now > END_LEAD) return;
@@ -87,9 +96,14 @@ async function openRound(r: RoundMeta) {
   }
 }
 
-/** T: both sides publishing → start recording and go live; still missing after the grace period → no-show. */
-async function startOrCancel(r: RoundMeta, t: number, now: number) {
-  const publishing = await ivs.publishingUserIds(r.stageArn!);
+/**
+ * T: both sides publishing → start recording and go live; still missing after the grace period → no-show.
+ * With `pollUntil`, keeps checking until then (capped at the grace period) before giving up for this tick.
+ */
+async function startOrCancel(r: RoundMeta, t: number, now: number, pollUntil = 0) {
+  const ids = [r.sellerBookingId, r.buyerBookingId];
+  const publishing = await ivs.waitForPublishers(r.stageArn!, ids, Math.min(pollUntil, t + NO_SHOW_GRACE));
+  now = Math.max(now, Date.now()); // polling took real time
   const present = { seller: publishing.includes(r.sellerBookingId), buyer: publishing.includes(r.buyerBookingId) };
   if (!present.seller || !present.buyer) {
     if (now >= t + NO_SHOW_GRACE) {

@@ -80,12 +80,12 @@ All of it is one CDK stack, `PitchDrillBackendStack` (`infra/lib/backend-stack.t
 | IAM | Least-privilege `.grant*()`. IVS has no grant methods: use `addToRolePolicy` scoped to exact actions and `arn:aws:ivs:us-west-2:<account>:stage/*` / `room/*` (built with `Stack.formatArn`), with a comment. |
 | API exposure | Public routes have no authorizer (opened 2026-10-15 for local frontend development; per-route throttles are the only abuse limit). Admin routes stay IAM-only forever. |
 | Rate limiting | HTTP API per-route throttles (all users combined). Default 50 rps / burst 100; `POST /bookings` 10/20; reads 20/40; votes/comments/chat tokens 20/40; reports 5/10. |
-| CORS | `http://localhost:3000` (+ Vercel domain in TASK-021). |
-| Live video | IVS Real-Time: one stage per round. Seller/buyer get PUBLISH+SUBSCRIBE tokens; spectators SUBSCRIBE-only (~0.3s latency). Players join on camera or mic only (camera can be muted mid-round); publishing audio alone counts as present. |
+| CORS | `http://localhost:3000` and `https://pitchdrill-azure.vercel.app` (Vercel production). |
+| Live video | IVS Real-Time: one stage per round. Seller/buyer get PUBLISH+SUBSCRIBE tokens; spectators SUBSCRIBE-only (~0.3s latency). Rounds are audio only for now (players join with their mic; the camera code stays for later); publishing audio alone counts as present. |
 | Recording | IVS server-side composition (grid layout, split screen) to S3, served via CloudFront (OAC). |
 | Chat | IVS Chat: one room per round. Spectators get SEND_MESSAGE tokens with their nickname; participants get receive-only tokens. Server events (round started, buzzer, tally) are sent with `SendEvent`. |
 | Briefs | OpenRouter, random product, generated when a round is paired (DynamoDB stream). Model ID is the CDK constant `OPENROUTER_MODEL` = `anthropic/claude-haiku-5.5` (chosen by the user). Fallback product list if generation fails. |
-| No-shows | The round goes live at the first tick ≥ T where both sides are publishing. If either is still missing at T+1m, it is cancelled (`no_show`). |
+| No-shows | The round goes live as soon as both sides are publishing at or after T (the tick before T polls every 2 s). If either is still missing at T+1m, it is cancelled (`no_show`). |
 | Votes | One per `voterId` per round, "Sold" / "Not sold", open from the buzzer forever (replays too). Tally always visible, broadcast live. |
 | Moderation | `POST /rounds/{id}/reports` is public. Admin routes (IAM): list reports, end a live round, hide a replay. No admin UI. |
 | Logging | Powertools Logger (JSON + request ID), Tracer (X-Ray), Metrics (EMF). 1-month retention. Alarms named by user impact, console only. |
@@ -114,7 +114,7 @@ Timeline for one slot:
 | Booking | Pairing first-come-first-serve; `ROUND` created with status `paired`. Stream → `GenerateBriefs`. |
 | T-5m | `SlotTick`: pair leftover waiters (fixes simultaneous-booking race), mark the rest `no_opponent`, create stage + chat room for each paired round, retry missing briefs (fallback list at this point). Status `ready`. Participants and spectators can join. |
 | T-30s | Briefs become readable (`GET /rounds/{id}/brief`, each side sees only its own). |
-| T … T+1m | `SlotTick`: both participants publishing → `StartComposition` (store `compositionArn` + `recordingPrefix`), `startedAt`, status `live`, `round_started` chat event. Still missing at T+1m → status `cancelled` (`no_show`), `round_cancelled` event, stage + room deleted. |
+| T … T+1m | `SlotTick`: the tick in the minute before T waits for T, then polls the stage every 2 s for up to 50 s from its own start (under the tick interval, so polls never overlap); later ticks check once. Clients count 3-2-1 down to T. Both participants publishing → `StartComposition` (store `compositionArn` + `recordingPrefix`), `startedAt`, status `live`, `round_started` chat event. Still missing at T+1m → status `cancelled` (`no_show`), `round_cancelled` event, stage + room deleted. |
 | startedAt + 2 min | Client shows the buzzer. The tick before the buzzer (within 15 s) waits for it, then: `buzzer` event, `StopComposition`, delete stage, status `ended`, `endedAt`. Voting opens. |
 | T+15m | `SlotTick`: delete chat room, status `closed`. Once `<recordingPrefix>/events/recording-ended.json` exists in S3, set `recordingPath` and list it in the replay feed. |
 

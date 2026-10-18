@@ -58,7 +58,7 @@ erDiagram
 | `endedBy?` | `admin` | set when an admin ends a live round |
 | `recordingMissingLogged?` | boolean | `RecordingMissing` warning already emitted |
 | `startedAt?`, `endedAt?` | ISO string | |
-| `briefs?` | map `{ product: { name, price, tagline }, seller: string, buyer: string, source: "openrouter"\|"fallback" }` | set by `GenerateBriefs` / `SlotTick`; never returned whole to clients |
+| `briefs?` | map `{ product: { name, price, tagline }, seller: string[], buyer: string[], source: "openrouter"\|"fallback" }` (bullet points; rounds before 2026-10-18 hold one string each) | set by `GenerateBriefs` / `SlotTick`; never returned whole to clients |
 | `votesSold`, `votesNotSold` | number | `ADD` on each vote |
 | `recordingPath?` | string | `<recordingPrefix>/media/hls/multivariant.m3u8`, served at `https://<cdn>/<recordingPath>` |
 | `hidden?` | boolean | admin hide |

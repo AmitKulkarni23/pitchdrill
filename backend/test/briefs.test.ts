@@ -7,7 +7,7 @@ process.env.OPENROUTER_MODEL_ENV = "test/model";
 const { fallbackBriefs, generateBriefs, parseBriefs } = await import("../src/lib/briefs");
 const { FALLBACK_BRIEFS } = await import("../src/lib/fallbackBriefs");
 
-const good = { product: { name: "Widget", price: "$10", tagline: "It widgets" }, seller: "Sell it.", buyer: "You are skeptical." };
+const good = { product: { name: "Widget", price: "$10", tagline: "It widgets" }, seller: ["It widgets.", "$10, once."], buyer: ["You are skeptical.", "Budget: $5."] };
 const reply = (content: string) => new Response(JSON.stringify({ choices: [{ message: { content } }] }));
 beforeEach(secretSpy);
 afterEach(() => mock.restore());
@@ -32,7 +32,8 @@ test("two failures → throws", async () => {
 });
 
 test("parseBriefs rejects missing fields; fallback list is complete", () => {
-  expect(parseBriefs(JSON.stringify({ ...good, buyer: "" }))).toBeNull();
+  expect(parseBriefs(JSON.stringify({ ...good, buyer: [] }))).toBeNull();
+  expect(parseBriefs(JSON.stringify({ ...good, seller: "One paragraph." }))).toBeNull();
   expect(FALLBACK_BRIEFS.length).toBeGreaterThanOrEqual(10);
   for (const b of FALLBACK_BRIEFS) expect(parseBriefs(JSON.stringify(b))).not.toBeNull();
   expect(fallbackBriefs().source).toBe("fallback");

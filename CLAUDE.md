@@ -117,7 +117,7 @@ cd infra && bunx cdk diff
 cd infra && bunx cdk deploy --all   # deploys to the default AWS profile's account, us-west-2
 ```
 
-Deployed API (stack output `PitchDrillApiUrl`): `https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com`. Public routes are open (no authorizer, CORS `http://localhost:3000` only); admin routes need IAM (SigV4). Replays are served from the `PitchDrillRecordingsCdnDomain` output. Call an admin route:
+Deployed API (stack output `PitchDrillApiUrl`): `https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com`. Public routes are open (no authorizer, CORS limited to localhost:3000 and the Vercel domain); admin routes need IAM (SigV4). Replays are served from the `PitchDrillRecordingsCdnDomain` output. Call an admin route:
 
 ```bash
 eval "$(aws configure export-credentials --format env)"
@@ -165,7 +165,7 @@ The visual system is **Study Hall**: a calm, light learning app (online-chess-ar
 - AWS access lives in Lambda IAM roles granted with `.grant*()`, never in the frontend. Services without grant methods (IVS) get `addToRolePolicy` scoped to exact actions and resources, with a comment.
 - Admin routes use API Gateway IAM (SigV4) auth; public routes have no authorizer.
 - API Gateway HTTP API per-route throttles (all users combined, not per IP — HTTP APIs don't support WAF). Limits in `docs/system_specs/architecture.md`.
-- CORS allows only `http://localhost:3000` until the Vercel domain is added.
+- CORS allows `http://localhost:3000` and the Vercel production domain `https://pitchdrill-azure.vercel.app`. The Vercel site is behind a shared password (`frontend/src/proxy.ts`, `SITE_PASSWORD`) until testing is done.
 
 ## Error Handling
 

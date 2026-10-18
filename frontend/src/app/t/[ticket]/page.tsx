@@ -4,19 +4,19 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Alert, Box, Button, Typography } from "@mui/material";
 import { ChatPanel, type RoundEvent } from "@/components/round/ChatPanel";
-import { RoundClock, RoundShell } from "@/components/round/RoundShell";
+import { BriefList, RoundClock, RoundShell } from "@/components/round/RoundShell";
 import { StageVideo } from "@/components/round/StageVideo";
 import { hall, panel } from "@/config/tokens";
 import { useNow, useTimeZone } from "@/hooks/useClock";
 import { useRound } from "@/hooks/useRound";
 import { api, ApiError } from "@/lib/api";
 import { countdown, slotLabel } from "@/lib/slots";
-import { addTicket } from "@/lib/storage";
+import { addPlayedRound, addTicket } from "@/lib/storage";
 import type { Booking, BriefResponse, JoinResponse } from "@/types/api";
 
 const OPEN_BEFORE = 5 * 60_000;
 
-/** Ticket page and participant arena: booking status, then camera + brief + timer for the round. */
+/** Ticket page and participant arena: booking status, then mic + brief + timer for the round. */
 // useParams needs a Suspense boundary with cacheComponents; the page itself is all client-side.
 export default function Page() {
   return (
@@ -33,15 +33,16 @@ function TicketPage() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [join, setJoin] = useState<JoinResponse | null>(null);
-  const [camera, setCamera] = useState(true);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [brief, setBrief] = useState<BriefResponse | null>(null);
   const { round, refresh } = useRound(booking?.roundId);
 
   const loadBooking = useCallback(async () => {
     try {
-      setBooking((await api.get<{ booking: Booking }>("/ticket", { ticket })).booking);
+      const { booking } = await api.get<{ booking: Booking }>("/ticket", { ticket });
+      setBooking(booking);
       addTicket(ticket);
+      if (booking.roundId) addPlayedRound(booking.roundId);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Couldn't load your ticket.");
     }
@@ -66,9 +67,8 @@ function TicketPage() {
     return () => clearInterval(id);
   }, [briefDue, brief, booking, ticket]);
 
-  async function joinRound(withCamera: boolean) {
+  async function joinRound() {
     setJoinError(null);
-    setCamera(withCamera);
     try {
       setJoin(await api.post<JoinResponse>(`/rounds/${booking!.roundId}/join`, {}, { ticket }));
     } catch (e) {
@@ -124,15 +124,12 @@ function TicketPage() {
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr" }, gap: 2.5, alignItems: "start" }}>
           <Box sx={{ display: "grid", gap: 2 }}>
             {join ? (
-              <StageVideo token={join.stageToken} publish camera={camera} sellerHandle={round.sellerHandle} buyerHandle={round.buyerHandle} />
+              <StageVideo token={join.stageToken} publish camera={false} sellerHandle={round.sellerHandle} buyerHandle={round.buyerHandle} />
             ) : (
               <Box sx={{ ...panel, p: 3, display: "grid", gap: 1.5 }}>
-                <Typography>Join now, on camera or mic only. The round starts when both of you are in at the start time; if someone is missing a minute after, it&apos;s cancelled.</Typography>
+                <Typography>Join now with your mic. Rounds are audio only. The round starts when both of you are in at the start time; if someone is missing a minute after, it&apos;s cancelled.</Typography>
                 {joinError && <Alert severity="error">{joinError}</Alert>}
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
-                  <Button variant="contained" size="large" onClick={() => joinRound(true)}>Join with camera</Button>
-                  <Button variant="outlined" size="large" onClick={() => joinRound(false)}>Join with mic only</Button>
-                </Box>
+                <Button variant="contained" size="large" onClick={joinRound} sx={{ justifySelf: "start" }}>Join with mic</Button>
               </Box>
             )}
           </Box>
@@ -143,7 +140,7 @@ function TicketPage() {
                 <>
                   <Typography sx={{ fontWeight: 700 }}>{brief.product.name} · {brief.product.price}</Typography>
                   <Typography variant="body2" sx={{ color: hall.muted }}>{brief.product.tagline}</Typography>
-                  <Typography variant="body2" data-testid="brief" sx={{ whiteSpace: "pre-wrap" }}>{brief.brief}</Typography>
+                  <Box data-testid="brief"><BriefList points={brief.brief} /></Box>
                 </>
               ) : (
                 <Typography variant="body2" sx={{ color: hall.muted }}>Unlocks 30 seconds before the start{now < start - 30_000 ? ` (in ${countdown(start - 30_000 - now)})` : "…"}.</Typography>
