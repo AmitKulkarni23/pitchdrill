@@ -10,7 +10,7 @@
 - **Audience**: Watch live + replay. Votes and comments on both.
 - **Voting**: Anyone, one vote per browser per round ("Sold" / "Not sold").
 - **Briefs**: LLM-generated. Seller gets a product sheet; buyer gets a hidden persona. Revealed ~30s before the round.
-- **Round length**: 60 seconds, enforced server-side.
+- **Round length**: 2 minutes, enforced server-side.
 - **Coming back**: no email. After booking: copy the ticket link or "Add to calendar" (`.ics` with the link and a 15-minute reminder).
 - **Spectator names**: a nickname typed once (saved in the browser) for chat and comments.
 - **No-shows**: if both sides aren't publishing at start, the round is cancelled.
@@ -24,7 +24,7 @@
 1. Browse today's (and upcoming) slots with counts of waiting sellers/buyers.
 2. Book a slot as seller or buyer with a handle; receive a ticket link once, plus opponent when paired.
 3. Join the arena with the ticket; see your brief before the round.
-4. 60s live split-screen round (seller left, buyer right) with a visible timer.
+4. 2-minute live split-screen round (seller left, buyer right) with a visible timer.
 5. Spectators watch live, chat, and vote at the buzzer.
 6. Replay page per round: video, vote result, comments, voting still open.
 7. Report a round; admin can end a live stage.

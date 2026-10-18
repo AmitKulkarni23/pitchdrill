@@ -14,14 +14,14 @@ Next.js (App Router) on Vercel, MUI with `sx` props (no CSS Modules, no Tailwind
 
 ## Users
 
-- **Sellers**: anyone who wants to practise selling. They book a slot, show up at a set time (on camera or mic only), and get 60 seconds to sell a product they only learn about 30 seconds before the round.
+- **Sellers**: anyone who wants to practise selling. They book a slot, show up at a set time (on camera or mic only), and get 2 minutes to sell a product they only learn about 30 seconds before the round.
 - **Buyers**: anyone who wants to practise objection handling or play the skeptic. They get a hidden persona (budget, doubts, reasons to say no) and push back.
 - **Watchers (learners)**: anyone with the link. Watching is a first-class way to learn, not a side audience: they browse and watch rounds live or as replays, chat under a nickname, vote "Sold" / "Not sold", and comment. Many people watch several rounds before they ever book one.
 - (inferred) Typical seller/buyer: early-career salespeople, founders, job-seekers preparing for "sell me this pen" interviews, joining from a laptop or phone at home in the evening.
 
 ## Product Purpose
 
-PitchDrill is a place to learn selling through one-minute drills, by doing them and by watching them, with equal weight. People book a slot, get matched with an opponent, and run a live 60-second split-screen round: the seller tries to close, the buyer tries to say no, and the audience decides. Everyone else learns by watching live rounds and the growing library of replays. Success means people come back for repeated reps, rounds actually start (both sides show up), and watchers keep watching, voting and commenting.
+PitchDrill is a place to learn selling through two-minute drills, by doing them and by watching them, with equal weight. People book a slot, get matched with an opponent, and run a live 2-minute split-screen round: the seller tries to close, the buyer tries to say no, and the audience decides. Everyone else learns by watching live rounds and the growing library of replays. Success means people come back for repeated reps, rounds actually start (both sides show up), and watchers keep watching, voting and commenting.
 
 ## Positioning
 
@@ -33,7 +33,7 @@ A learning experience, not a sales show. Live, timed, two-sided practice with re
 - No login or signup. A booking returns a private ticket link (the only way back in); people keep it via "Copy link" or "Add to calendar" (`.ics` with a 15-minute reminder). Spectators are anonymous, identified per browser, with a nickname typed once.
 - A first-time visitor can browse live, upcoming and past rounds before booking anything; booking is always reachable but is not the only door in. The home's exact layout (lobby, library grid, or a mix) is a surface decision, not settled here.
 - Pairing is first-come-first-serve within a slot; all rounds in a slot run in parallel.
-- Round flow: arena opens at T-5 min → briefs visible at T-30 s → 60-second round → buzzer → votes → replay with comments.
+- Round flow: arena opens at T-5 min → briefs visible at T-30 s → 2-minute round → buzzer → votes → replay with comments.
 - No-show → the round is cancelled.
 
 ## Capabilities and Constraints
@@ -57,7 +57,7 @@ A learning experience, not a sales show. Live, timed, two-sided practice with re
 ## Product Principles
 
 1. **Zero friction**: a handle and a ticket link are all you need; never add a signup step.
-2. **One minute, no more**: the constraint is the product; time is always visible.
+2. **Two minutes, no more**: the constraint is the product; time is always visible.
 3. **Asymmetric information**: seller and buyer see different briefs; never leak the buyer persona to the seller or spectators.
 4. **Learn by doing and by watching**: booking a round and watching one are equal paths; live rounds, replays, votes and comments are how people improve.
 5. **Watch before you book**: anyone can see what rounds look like before committing to one.

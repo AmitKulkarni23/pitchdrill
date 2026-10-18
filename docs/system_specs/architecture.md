@@ -101,7 +101,7 @@ stateDiagram-v2
   paired --> ready: SlotTick at ≥ T-5m<br/>create stage + chat room
   ready --> live: SlotTick at ≥ T<br/>both publishing → start composition
   ready --> cancelled: SlotTick at ≥ T<br/>someone missing → delete stage + room
-  live --> ended: SlotTick at ≥ startedAt+60s<br/>buzzer event, stop composition, delete stage
+  live --> ended: SlotTick at ≥ startedAt + 2 min<br/>buzzer event, stop composition, delete stage
   live --> ended: admin end
   ended --> closed: SlotTick at ≥ T+15m<br/>delete chat room
   closed --> [*]
@@ -115,7 +115,7 @@ Timeline for one slot:
 | T-5m | `SlotTick`: pair leftover waiters (fixes simultaneous-booking race), mark the rest `no_opponent`, create stage + chat room for each paired round, retry missing briefs (fallback list at this point). Status `ready`. Participants and spectators can join. |
 | T-30s | Briefs become readable (`GET /rounds/{id}/brief`, each side sees only its own). |
 | T … T+1m | `SlotTick`: both participants publishing → `StartComposition` (store `compositionArn` + `recordingPrefix`), `startedAt`, status `live`, `round_started` chat event. Still missing at T+1m → status `cancelled` (`no_show`), `round_cancelled` event, stage + room deleted. |
-| startedAt + 60s | Client shows the buzzer. The tick before the buzzer (within 15 s) waits for it, then: `buzzer` event, `StopComposition`, delete stage, status `ended`, `endedAt`. Voting opens. |
+| startedAt + 2 min | Client shows the buzzer. The tick before the buzzer (within 15 s) waits for it, then: `buzzer` event, `StopComposition`, delete stage, status `ended`, `endedAt`. Voting opens. |
 | T+15m | `SlotTick`: delete chat room, status `closed`. Once `<recordingPrefix>/events/recording-ended.json` exists in S3, set `recordingPath` and list it in the replay feed. |
 
 `SlotTick` runs every minute (no reserved concurrency: the account limit is 10, so overlapping ticks are possible); transitions can lag up to a minute. Every transition MUST be idempotent (conditional updates on `status`). Logic lives in `backend/src/lib/lifecycle.ts`.

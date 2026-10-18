@@ -30,7 +30,7 @@ export interface RoundMeta {
   hidden?: boolean;
 }
 
-export const ROUND_MS = 60_000;
+export const ROUND_MS = 2 * 60_000;
 
 export async function getRound(roundId: string): Promise<RoundMeta | undefined> {
   const { Item } = await db.send(new GetCommand({ TableName: TABLE, Key: { PK: `ROUND#${roundId}`, SK: "META" }, ConsistentRead: true }));

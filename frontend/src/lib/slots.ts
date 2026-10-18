@@ -8,7 +8,6 @@ const LAST_MINUTE = 20 * 60 + 45;
 const STEP_MINUTES = 15;
 const CLOSES_BEFORE_MS = 5 * 60_000;
 const WINDOW_DAYS = 7;
-export const ROUND_SECONDS = 60;
 /** Seats per role per slot; mirrors MAX_PER_ROLE in backend/src/lib/bookings.ts. */
 export const MAX_PER_ROLE = 4;
 

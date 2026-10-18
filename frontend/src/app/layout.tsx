@@ -8,8 +8,8 @@ import "./globals.css";
 const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PitchDrill — learn to sell in sixty seconds",
-  description: "Watch real one-minute sales rounds, then play one yourself as the seller or the buyer. No signup.",
+  title: "PitchDrill — learn to sell in two minutes",
+  description: "Watch real two-minute sales rounds, then play one yourself as the seller or the buyer. No signup.",
   // Not public yet: keep every page out of search engines.
   robots: { index: false, follow: false },
 };

@@ -2,7 +2,7 @@
 
 ## Summary
 
-The seller and buyer enter the arena from their ticket page: camera/mic check, join the IVS stage, see each other side by side, read their own brief from 30 seconds before start, and run the 60-second round with a visible timer and buzzer. See `docs/system_specs/architecture.md` §4 timeline and §6.
+The seller and buyer enter the arena from their ticket page: camera/mic check, join the IVS stage, see each other side by side, read their own brief from 30 seconds before start, and run the 2-minute round with a visible timer and buzzer. See `docs/system_specs/architecture.md` §4 timeline and §6.
 
 ## Conventions
 
@@ -20,7 +20,7 @@ Read and follow these before writing ANY code:
 4. `components/SplitScreen.tsx` MUST place the seller on the left and the buyer on the right using participant `attributes.role` (local preview on your side), with handle + role labels. It is reused by spectators (TASK-018). Stacks vertically on narrow screens.
 5. Connect to IVS Chat with `chatToken` (read-only) and listen for events: `round_started` (start the timer from `startedAt`), `buzzer`, `round_cancelled`. Also poll `GET /rounds/{roundId}` every 5 s as a fallback.
 6. Brief panel: from `T - 30s`, fetch `GET /rounds/{roundId}/brief` (retry on `brief_not_yet` at `availableAt`, and every 3 s on `brief_pending`). Show product name, price, tagline and your side's brief. Before T-30s show a countdown to the brief.
-7. Timer: before start, countdown to T; when live, 60 → 0 from `startedAt`; at 0 (or on `buzzer`), stop publishing locally, show "Buzzer!" and then the live vote tally (from `tally` events / round polling) and a link to the replay page.
+7. Timer: before start, countdown to T; when live, 2:00 → 0:00 from `startedAt`; at 0 (or on `buzzer`), stop publishing locally, show "Buzzer!" and then the live vote tally (from `tally` events / round polling) and a link to the replay page.
 8. `round_cancelled` MUST show "Your opponent didn't show" and leave the stage.
 9. Leaving the page MUST leave the stage and disconnect chat.
 
@@ -39,7 +39,7 @@ Read and follow these before writing ANY code:
 | 1 | `arenaPhase: before T-30s should be pre-brief` | phase | `frontend/src/lib/arena.test.ts` |
 | 2 | `arenaPhase: between T-30s and start should be brief/starting` | phase | `frontend/src/lib/arena.test.ts` |
 | 3 | `arenaPhase: live with startedAt 59s ago should be live with 1s left` | phase + remaining | `frontend/src/lib/arena.test.ts` |
-| 4 | `arenaPhase: 60s after startedAt should be buzzer` | phase | `frontend/src/lib/arena.test.ts` |
+| 4 | `arenaPhase: 2 min after startedAt should be buzzer` | phase | `frontend/src/lib/arena.test.ts` |
 | 5 | `parseRoundEvent: should parse round_started, buzzer, round_cancelled, tally` | typed events | `frontend/src/lib/arena.test.ts` |
 | 6 | `sideForRole: seller left, buyer right` | layout mapping | `frontend/src/lib/arena.test.ts` |
 

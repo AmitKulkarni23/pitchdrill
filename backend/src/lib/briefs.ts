@@ -25,7 +25,7 @@ async function getApiKey(): Promise<string> {
   return apiKey;
 }
 
-const PROMPT = `You write material for a one-minute sales role-play game.
+const PROMPT = `You write material for a two-minute sales role-play game.
 Invent ONE random, plausible, safe-for-work product (consumer or B2B; vary the category widely).
 Return ONLY a JSON object with exactly these fields:
 {

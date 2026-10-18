@@ -33,7 +33,7 @@ Read and follow these before writing ANY code:
 
 - `StartComposition` needs an active stage session; it fails if nobody has joined. That is why it runs only after the participant check.
 - Verify the exact `StartComposition` request shape (`layout.grid`, `destinations[].s3`) against the current AWS SDK v3 types in `node_modules/@aws-sdk/client-ivs-realtime`; follow the types over this spec if they differ, and note it under Spec Updates.
-- The 60-second timer is shown by clients from `startedAt`; the server ends the round in TASK-008.
+- The 2-minute timer is shown by clients from `startedAt`; the server ends the round in TASK-008.
 
 ## TDD Plan
 

@@ -4,7 +4,7 @@ import { hall, panel } from "@/config/tokens";
 const STEPS = [
   { title: "Book a seat", body: "Pick a slot, choose seller or buyer, type a handle. You're paired with the next person on the other side." },
   { title: "Read your brief", body: "30 seconds before: the seller sees the product, the buyer sees a secret persona." },
-  { title: "Sixty seconds", body: "Split screen, live audience. The seller tries to close, the buyer tries to say no." },
+  { title: "Two minutes", body: "Split screen, live audience. The seller tries to close, the buyer tries to say no." },
   { title: "The verdict", body: "Watchers vote Sold or Not sold and comment. The replay stays up to learn from." },
 ];
 

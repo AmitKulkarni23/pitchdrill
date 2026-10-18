@@ -19,7 +19,7 @@ OWN-WORLD: Light grey ground #F7F7F5, white panels with 1px #E6E8EB lines and 16
 
 STORY: The visitor sees what is live (or when the next round starts), sees they can play in three fields, and finds every past round below to learn from.
 
-FIRST VIEWPORT: Header (60 mark + PitchDrill, Watch / Play / How it works, green Book a seat). Headline "Learn to sell in sixty seconds." Two panels: Watch (7/12: live tiles, or next start time and countdown) and Play (5/12: next open slot, Seller/Buyer, handle, Book). Phone: stacked Watch, Play.
+FIRST VIEWPORT: Header (60 mark + PitchDrill, Watch / Play / How it works, green Book a seat). Headline "Learn to sell in two minutes." Two panels: Watch (7/12: live tiles, or next start time and countdown) and Play (5/12: next open slot, Seller/Buyer, handle, Book). Phone: stacked Watch, Play.
 
 FORM: Study Hall (online chess archive), safer-register grounded candidate 1, seed key ceced385.
 

@@ -2,7 +2,7 @@
 
 ## Summary
 
-End live rounds 60 seconds after they start, close chat rooms after 15 minutes, and register each finished recording so it appears in the replay feed. See `docs/system_specs/architecture.md` §4 and `docs/system_specs/data_model.md` (`recordingPath`, GSI1).
+End live rounds 2 minutes after they start, close chat rooms after 15 minutes, and register each finished recording so it appears in the replay feed. See `docs/system_specs/architecture.md` §4 and `docs/system_specs/data_model.md` (`recordingPath`, GSI1).
 
 ## Conventions
 
@@ -16,7 +16,7 @@ Read and follow these before writing ANY code:
 
 ### Backend
 
-1. `tick` MUST end every `live` round with `now ≥ startedAt + 60s` via `endRound(round)`: `SendEvent` `buzzer`, `StopComposition`, `DeleteStage`, then `META` `SET status = "ended", endedAt` (condition `status = "live"`).
+1. `tick` MUST end every `live` round with `now ≥ startedAt + 2 min` via `endRound(round)`: `SendEvent` `buzzer`, `StopComposition`, `DeleteStage`, then `META` `SET status = "ended", endedAt` (condition `status = "live"`).
 2. `endRound` MUST be exported for reuse by the admin "end round" route (TASK-013), accepting an optional `endedBy: "admin"` stored on `META`.
 3. `tick` MUST close every `ended` round with `now ≥ T + 15m`: `DeleteRoom`, then `META` `SET status = "closed"` (condition `status = "ended"`).
 4. For `ended`/`closed` rounds without `recordingPath` and not `hidden`, `tick` MUST look for the composition's HLS multivariant playlist in the recordings bucket. When found: `SET recordingPath, GSI1PK = "REPLAY", GSI1SK = endedAt`.

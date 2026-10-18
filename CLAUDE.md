@@ -1,19 +1,19 @@
 # PitchDrill
 
-A one-minute sales drill arena. Anyone can book a seat as a seller or a buyer, get matched in a live split-screen round, and try to close (or refuse) a deal in 60 seconds while an audience watches, votes and comments.
+A two-minute sales drill arena. Anyone can book a seat as a seller or a buyer, get matched in a live split-screen round, and try to close (or refuse) a deal in 2 minutes while an audience watches, votes and comments.
 
 ## What It Does
 
-Each day has scheduled time slots. People book a slot as a seller or a buyer with a public handle — no signup — and receive a private ticket link that proves the booking is theirs. Within a slot, sellers and buyers are paired first-come-first-serve at booking time, and every pair gets its own round. All rounds in a slot run in parallel; spectators pick which one to watch. Just before the round, both sides get an LLM-generated brief: the seller sees a product sheet, the buyer sees a hidden persona (budget, doubts, reasons to say no). The round runs for 60 seconds on a split screen. Spectators watch live, chat, and vote "Sold" or "Not sold" at the buzzer. The recording stays up for replay, votes and comments.
+Each day has scheduled time slots. People book a slot as a seller or a buyer with a public handle — no signup — and receive a private ticket link that proves the booking is theirs. Within a slot, sellers and buyers are paired first-come-first-serve at booking time, and every pair gets its own round. All rounds in a slot run in parallel; spectators pick which one to watch. Just before the round, both sides get an LLM-generated brief: the seller sees a product sheet, the buyer sees a hidden persona (budget, doubts, reasons to say no). The round runs for 2 minutes on a split screen. Spectators watch live, chat, and vote "Sold" or "Not sold" at the buzzer. The recording stays up for replay, votes and comments.
 
 ## Design Principles
 
 - **Zero friction**: No login, no signup. A handle and a ticket link are all you need.
-- **One minute, no more**: The constraint is the product. Rounds are short, sharp and repeatable.
+- **Two minutes, no more**: The constraint is the product. Rounds are short, sharp and repeatable.
 - **Asymmetric information**: Seller and buyer get different briefs, so every round has real tension.
 - **Practice in public**: Live audience, replays, votes and comments are how people improve.
 - **Watch before you book**: the home shows live rounds and every past round; booking is one click away, never the only door.
-- **Flow**: Land on home (watch live or past rounds) → Pick slot → Book as seller or buyer (handle) → Get ticket link + opponent → Join arena → Read brief → 60s round → Votes + comments.
+- **Flow**: Land on home (watch live or past rounds) → Pick slot → Book as seller or buyer (handle) → Get ticket link + opponent → Join arena → Read brief → 2-minute round → Votes + comments.
 
 ## Tech Stack
 
@@ -72,7 +72,7 @@ DynamoDB single table `pitchdrill-main` (full layout in `docs/system_specs/data_
 - Unpaired bookings wait; if still unpaired at slot time they are told no opponent was found.
 - All rounds in a slot start together; the arena page lists live rounds for spectators to pick from.
 - Briefs are generated via OpenRouter when a round is paired and revealed to each side ~30s before the round. The buyer's persona is never shown to the seller.
-- Rounds are 60 seconds, enforced server-side. Spectators watch live and vote "Sold" / "Not sold" at the buzzer.
+- Rounds are 2 minutes, enforced server-side. Spectators watch live and vote "Sold" / "Not sold" at the buzzer.
 - Recordings are kept for replay; votes and comments stay open on replays.
 - Voters are identified by a random voter ID in localStorage: one vote per browser per round, rate-limited.
 - Anyone can report a round; an admin can end a live stage.

@@ -1,6 +1,6 @@
 ---
 name: PitchDrill
-description: A study hall for selling. Watch a one-minute round, then play one.
+description: A study hall for selling. Watch a two-minute round, then play one.
 colors:
   ground: "#F7F7F5"
   panel: "#FFFFFF"

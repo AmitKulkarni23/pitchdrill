@@ -13,7 +13,7 @@ const OPEN_BEFORE = 5 * MIN;
 const NO_SHOW_GRACE = MIN;
 const CLOSE_AFTER = 15 * MIN;
 const WINDOW_AFTER = 20 * MIN;
-/** A tick ends rounds whose buzzer falls within this lead, waiting the rest, so rounds last 60 s, not up to 2 min. */
+/** A tick ends rounds whose buzzer falls within this lead, waiting the rest, so rounds last exactly 2 min, not up to 3. */
 const END_LEAD = 15_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

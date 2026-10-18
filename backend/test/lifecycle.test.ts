@@ -123,8 +123,8 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     expect(fake.stages.has(cancelled!.stageArn!)).toBe(false);
   });
 
-  test("buzzer at startedAt+60s ends the round; votes once per voter with a live tally", async () => {
-    await at(T + 2000 + MIN);
+  test("buzzer at startedAt+2m ends the round; votes once per voter with a live tally", async () => {
+    await at(T + 2000 + 2 * MIN);
     const ended = await getRound(r1);
     expect(ended).toMatchObject({ status: "ended" });
     expect(fake.stages.has(ended!.stageArn!)).toBe(false);
