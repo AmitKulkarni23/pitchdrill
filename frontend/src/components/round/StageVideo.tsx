@@ -126,8 +126,13 @@ export function StageVideo({ token, publish, camera = true, sellerHandle, buyerH
 
 function Pane({ side, label, bg }: { side: Side; label: string; bg: string }) {
   const ref = useRef<HTMLVideoElement>(null);
+  // Browsers can refuse to play sound without a click on the page (always possible for spectators); offer one.
+  const [blocked, setBlocked] = useState(false);
+  const play = () => ref.current?.play().then(() => setBlocked(false), () => setBlocked(true));
   useEffect(() => {
-    if (ref.current) ref.current.srcObject = side.stream;
+    if (!ref.current) return;
+    ref.current.srcObject = side.stream;
+    if (side.stream) play();
   }, [side.stream]);
   return (
     <Box sx={{ position: "relative", aspectRatio: "4 / 3", bgcolor: bg, display: "grid", placeItems: "center" }}>
@@ -136,6 +141,11 @@ function Pane({ side, label, bg }: { side: Side; label: string; bg: string }) {
         <Box component="video" ref={ref} autoPlay playsInline data-testid={`video-${label.split(" ")[0]!.toLowerCase()}`} sx={{ gridArea: "1 / 1", width: "100%", height: "100%", objectFit: "cover", opacity: side.video ? 1 : 0 }} />
       )}
       {!side.video && <Box sx={{ gridArea: "1 / 1", fontSize: 14, fontWeight: 700, color: hall.muted }}>{side.joined ? "Audio only" : "Waiting to join…"}</Box>}
+      {blocked && side.stream && (
+        <Button variant="contained" size="small" onClick={play} sx={{ position: "absolute", top: 10, left: 10 }}>
+          Turn on sound
+        </Button>
+      )}
       <Box sx={{ position: "absolute", bottom: 10, left: 10, px: 1, py: 0.5, borderRadius: "6px", bgcolor: "rgba(255,255,255,0.94)", fontSize: 12, fontWeight: 600 }}>{label}</Box>
     </Box>
   );

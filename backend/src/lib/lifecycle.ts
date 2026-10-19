@@ -19,8 +19,9 @@ const WINDOW_AFTER = 20 * MIN;
 /** A tick ends rounds whose buzzer falls within this lead, waiting the rest, so rounds last exactly 2 min, not up to 3. */
 const END_LEAD = 15_000;
 /**
- * Ticks fire about once a minute, so the tick just before T waits for T, then polls the stage for up to START_POLL
- * and starts the round the moment both sides publish. START_POLL stays under the tick interval so polls never overlap.
+ * Ticks fire about once a minute, so from the tick just before T each tick polls the stage for up to START_POLL (from T
+ * at the earliest) and starts the round the moment both sides publish. START_POLL stays under the tick interval so
+ * polls never overlap.
  */
 const START_LEAD = MIN;
 const START_POLL = 50_000;
@@ -79,12 +80,14 @@ async function stepRound(r: RoundMeta, t: number, now: number, products: Set<str
   }
 }
 
-/** From T: start or cancel. The tick just before T waits for T and polls, so the round starts on the dot. */
+/**
+ * From T: start or cancel. Every tick from the one just before T polls (from T) until both players publish, so the
+ * round starts within ~2 s of the second one joining, and a no-show is cancelled right at the grace deadline.
+ */
 async function stepReady(r: RoundMeta, t: number, now: number) {
-  if (now >= t) return startOrCancel(r, t, now);
   if (t - now > START_LEAD) return;
-  await sleep(t - now);
-  return startOrCancel(r, t, t, now + START_POLL);
+  if (now < t) await sleep(t - now);
+  return startOrCancel(r, t, Math.max(now, t), now + START_POLL);
 }
 
 /** T-5m: briefs from OpenRouter, or a canned one when it fails, so a round never starts without them. */
