@@ -5,9 +5,9 @@ import { Alert, Box, Button } from "@mui/material";
 import { hall } from "@/config/tokens";
 import type { Role } from "@/types/api";
 
-/** `joined`: publishing anything. `video`: an unmuted camera track (mic-only players have none). */
-type Side = { stream: MediaStream | null; handle?: string; joined: boolean; video: boolean };
-const EMPTY: Side = { stream: null, joined: false, video: false };
+/** `joined`: publishing anything. `video`: an unmuted camera track (mic-only players have none). `audio`: drives the level meter. */
+type Side = { stream: MediaStream | null; handle?: string; joined: boolean; video: boolean; audio: MediaStreamTrack | null };
+const EMPTY: Side = { stream: null, joined: false, video: false, audio: null };
 
 /**
  * Seller left, buyer right, over IVS Real-Time. `publish` turns on this browser's mic, plus the camera
@@ -63,7 +63,8 @@ export function StageVideo({ token, publish, camera = true, sellerHandle, buyerH
         // Local audio is never played back to yourself; the local camera's mute state is ours, not the event's.
         const playable = (participant.isLocal ? list.filter((s) => s.mediaStreamTrack.kind === "video") : list).map((s) => s.mediaStreamTrack);
         const video = list.some((s) => s.mediaStreamTrack.kind === "video" && !(participant.isLocal ? localVideo?.isMuted : s.isMuted));
-        const side = { stream: playable.length ? new MediaStream(playable) : null, handle: participant.attributes.handle as string, joined: list.length > 0, video };
+        const audio = list.find((s) => s.mediaStreamTrack.kind === "audio")?.mediaStreamTrack ?? null; // your own mic too, so you see it working
+        const side = { stream: playable.length ? new MediaStream(playable) : null, handle: participant.attributes.handle as string, joined: list.length > 0, video, audio };
         setSides((s) => ({ ...s, [role]: side }));
       };
       stage.on(StageEvents.STAGE_PARTICIPANT_STREAMS_ADDED, (participant, streams) => {
@@ -141,12 +142,44 @@ function Pane({ side, label, bg }: { side: Side; label: string; bg: string }) {
         <Box component="video" ref={ref} autoPlay playsInline data-testid={`video-${label.split(" ")[0]!.toLowerCase()}`} sx={{ gridArea: "1 / 1", width: "100%", height: "100%", objectFit: "cover", opacity: side.video ? 1 : 0 }} />
       )}
       {!side.video && <Box sx={{ gridArea: "1 / 1", fontSize: 14, fontWeight: 700, color: hall.muted }}>{side.joined ? "Audio only" : "Waiting to join…"}</Box>}
+      {side.audio && <LevelMeter track={side.audio} />}
       {blocked && side.stream && (
         <Button variant="contained" size="small" onClick={play} sx={{ position: "absolute", top: 10, left: 10 }}>
           Turn on sound
         </Button>
       )}
       <Box sx={{ position: "absolute", bottom: 10, left: 10, px: 1, py: 0.5, borderRadius: "6px", bgcolor: "rgba(255,255,255,0.94)", fontSize: 12, fontWeight: 600 }}>{label}</Box>
+    </Box>
+  );
+}
+
+/** A bar that moves with the speaker's voice: Web Audio analyser on the track, drawn without re-rendering React. */
+function LevelMeter({ track }: { track: MediaStreamTrack }) {
+  const bar = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const ctx = new AudioContext();
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    ctx.createMediaStreamSource(new MediaStream([track])).connect(analyser); // analyser only; nothing goes to the speakers
+    const data = new Uint8Array(analyser.fftSize);
+    let frame = 0;
+    const draw = () => {
+      analyser.getByteTimeDomainData(data);
+      let peak = 0;
+      for (const v of data) peak = Math.max(peak, Math.abs(v - 128));
+      if (bar.current) bar.current.style.transform = `scaleX(${Math.min(1, (peak / 128) * 2.5)})`;
+      frame = requestAnimationFrame(draw);
+    };
+    ctx.resume().catch(() => {});
+    draw();
+    return () => {
+      cancelAnimationFrame(frame);
+      ctx.close();
+    };
+  }, [track]);
+  return (
+    <Box aria-hidden sx={{ position: "absolute", left: 16, right: 16, top: "62%", height: 8, borderRadius: 999, bgcolor: "rgba(255,255,255,0.7)", overflow: "hidden" }}>
+      <Box ref={bar} sx={{ height: "100%", bgcolor: hall.green, transformOrigin: "left", transform: "scaleX(0)", transition: "transform 80ms linear" }} />
     </Box>
   );
 }
