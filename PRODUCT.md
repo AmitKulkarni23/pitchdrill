@@ -14,7 +14,7 @@ Next.js (App Router) on Vercel, MUI with `sx` props (no CSS Modules, no Tailwind
 
 ## Users
 
-- **Sellers**: anyone who wants to practise selling. They book a slot, show up at a set time (on camera or mic only), and get 2 minutes to sell a product they only learn about 30 seconds before the round.
+- **Sellers**: anyone who wants to practise selling. They book a slot, show up at a set time (audio only for now), and get 2 minutes to sell a product they only learn about 5 minutes before the round.
 - **Buyers**: anyone who wants to practise objection handling or play the skeptic. They get a hidden persona (budget, doubts, reasons to say no) and push back.
 - **Watchers (learners)**: anyone with the link. Watching is a first-class way to learn, not a side audience: they browse and watch rounds live or as replays, chat under a nickname, vote "Sold" / "Not sold", and comment. Many people watch several rounds before they ever book one.
 - (inferred) Typical seller/buyer: early-career salespeople, founders, job-seekers preparing for "sell me this pen" interviews, joining from a laptop or phone at home in the evening.
@@ -25,7 +25,7 @@ PitchDrill is a place to learn selling through two-minute drills, by doing them 
 
 ## Positioning
 
-A learning experience, not a sales show. Live, timed, two-sided practice with real strangers and a real audience verdict. The seller doesn't know the product until 30 seconds before; the buyer has a secret persona the seller never sees. Every round is short, public, recorded and judged, and it needs no account.
+A learning experience, not a sales show. Live, timed, two-sided practice with real strangers and a real audience verdict. The seller doesn't know the product until 5 minutes before; the buyer has a secret persona the seller never sees. Every round is short, public, recorded and judged, and it needs no account.
 
 ## Operating Context
 
@@ -33,7 +33,7 @@ A learning experience, not a sales show. Live, timed, two-sided practice with re
 - No login or signup. A booking returns a private ticket link (the only way back in); people keep it via "Copy link" or "Add to calendar" (`.ics` with a 15-minute reminder). Spectators are anonymous, identified per browser, with a nickname typed once.
 - A first-time visitor can browse live, upcoming and past rounds before booking anything; booking is always reachable but is not the only door in. The home's exact layout (lobby, library grid, or a mix) is a surface decision, not settled here.
 - Pairing is first-come-first-serve within a slot; all rounds in a slot run in parallel.
-- Round flow: arena opens at T-5 min → briefs visible at T-30 s → 2-minute round → buzzer → votes → replay with comments.
+- Round flow: briefs visible at T-5 min → arena opens at T-2 min → 2-minute round → buzzer → votes → replay with comments.
 - No-show → the round is cancelled.
 
 ## Capabilities and Constraints

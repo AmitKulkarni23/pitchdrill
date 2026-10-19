@@ -14,7 +14,8 @@ import { countdown, slotLabel } from "@/lib/slots";
 import { addPlayedRound, addTicket } from "@/lib/storage";
 import type { Booking, BriefResponse, JoinResponse } from "@/types/api";
 
-const OPEN_BEFORE = 5 * 60_000;
+const BRIEF_BEFORE = 5 * 60_000;
+const ARENA_BEFORE = 2 * 60_000;
 
 /** Ticket page and participant arena: booking status, then mic + brief + timer for the round. */
 // useParams needs a Suspense boundary with cacheComponents; the page itself is all client-side.
@@ -56,9 +57,9 @@ function TicketPage() {
     return () => (clearTimeout(first), clearInterval(id));
   }, [loadBooking, booking?.roundId, booking?.status]);
 
-  // Brief unlocks at T-30s; poll until it arrives.
+  // Brief unlocks at T-5m; poll until it arrives.
   const start = booking ? Date.parse(booking.slotId) : 0;
-  const briefDue = now !== null && booking?.roundId && now >= start - 30_000;
+  const briefDue = now !== null && booking?.roundId && now >= start - BRIEF_BEFORE;
   useEffect(() => {
     if (!briefDue || brief) return;
     const get = () => api.get<BriefResponse>(`/rounds/${booking!.roundId}/brief`, { ticket }).then(setBrief).catch(() => {});
@@ -104,13 +105,14 @@ function TicketPage() {
   if (!round) return <RoundShell title="Loading your round…" subtitle={subtitle}><Box sx={{ ...panel, height: 240 }} /></RoundShell>;
 
   const arenaOpen = round.status === "ready" || round.status === "live";
+  const briefOpen = arenaOpen || (round.status === "paired" && now >= start - BRIEF_BEFORE);
   const finished = round.status === "ended" || round.status === "closed";
   return (
     <RoundShell title={finished ? "Round over" : round.status === "cancelled" ? "Round cancelled" : "Your round"} subtitle={subtitle}>
       <RoundClock round={round} now={now} />
-      {round.status === "paired" && (
+      {round.status === "paired" && !briefOpen && (
         <Box sx={{ ...panel, p: 3 }}>
-          <Typography>The arena opens 5 minutes before the start ({countdown(start - OPEN_BEFORE - now)} from now). Keep this page open; it updates on its own.</Typography>
+          <Typography>Your brief unlocks 5 minutes before the start ({countdown(start - BRIEF_BEFORE - now)} from now), and the arena opens 2 minutes before. Keep this page open; it updates on its own.</Typography>
         </Box>
       )}
       {round.status === "cancelled" && <Alert severity="info">{round.cancelReason === "no_show" ? "Both players have to join when the round starts. Book another slot to try again." : "A moderator ended this round."}</Alert>}
@@ -120,10 +122,14 @@ function TicketPage() {
           <Button href={`/r/${round.roundId}`} variant="contained" sx={{ justifySelf: "start" }}>Votes and replay</Button>
         </Box>
       )}
-      {arenaOpen && (
+      {briefOpen && (
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr" }, gap: 2.5, alignItems: "start" }}>
           <Box sx={{ display: "grid", gap: 2 }}>
-            {join ? (
+            {!arenaOpen ? (
+              <Box sx={{ ...panel, p: 3 }}>
+                <Typography>Read your brief. The arena opens 2 minutes before the start ({countdown(Math.max(0, start - ARENA_BEFORE - now))} from now); join with your mic then.</Typography>
+              </Box>
+            ) : join ? (
               <StageVideo token={join.stageToken} publish camera={false} sellerHandle={round.sellerHandle} buyerHandle={round.buyerHandle} />
             ) : (
               <Box sx={{ ...panel, p: 3, display: "grid", gap: 1.5 }}>
@@ -143,7 +149,7 @@ function TicketPage() {
                   <Box data-testid="brief"><BriefList points={brief.brief} /></Box>
                 </>
               ) : (
-                <Typography variant="body2" sx={{ color: hall.muted }}>Unlocks 30 seconds before the start{now < start - 30_000 ? ` (in ${countdown(start - 30_000 - now)})` : "…"}.</Typography>
+                <Typography variant="body2" sx={{ color: hall.muted }}>Your brief is on its way…</Typography>
               )}
             </Box>
             {join && <ChatPanel roundId={round.roundId} participantToken={join.chatToken} onEvent={onEvent} />}

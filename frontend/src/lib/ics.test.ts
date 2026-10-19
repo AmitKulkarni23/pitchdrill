@@ -17,7 +17,7 @@ test("buildIcs: should contain UTC DTSTART/DTEND, URL, VALARM -PT15M and CRLF", 
 });
 
 test("buildIcs: should escape commas, semicolons and newlines in text", () => {
-  expect(ics).toContain("DESCRIPTION:Your ticket (keep it private): https://pitchdrill.app/t/abc\\nThe arena opens 5 minutes before the start.");
+  expect(ics).toContain("DESCRIPTION:Your ticket (keep it private): https://pitchdrill.app/t/abc\\nYour brief unlocks 5 minutes before the start\\; the arena opens 2 minutes before.");
   const odd = buildIcs({ slotId: "2026-10-14T23:45:00.000Z", role: "buyer", link: "https://x/t/a,b;c" });
   expect(odd).toContain("a\\,b\\;c");
 });

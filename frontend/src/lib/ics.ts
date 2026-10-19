@@ -19,7 +19,7 @@ export function buildIcs({ slotId, role, link, now = Date.now() }: { slotId: str
     `DTSTART:${stamp(start)}`,
     `DTEND:${stamp(start + 15 * 60_000)}`,
     `SUMMARY:${escape(title)}`,
-    `DESCRIPTION:${escape(`Your ticket (keep it private): ${link}\nThe arena opens 5 minutes before the start.`)}`,
+    `DESCRIPTION:${escape(`Your ticket (keep it private): ${link}\nYour brief unlocks 5 minutes before the start; the arena opens 2 minutes before.`)}`,
     `URL:${link}`,
     "BEGIN:VALARM",
     "ACTION:DISPLAY",

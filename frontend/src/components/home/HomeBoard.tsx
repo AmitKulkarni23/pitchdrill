@@ -110,113 +110,111 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
         <PlayPanel slotId={selected} timeZone={timeZone} now={now} />
       </Box>
 
-      <Box sx={row}>
-        <Box component="section" aria-labelledby="slots-h" sx={{ flex: "7 1 520px", minWidth: 0, display: "grid", gap: 1.75, alignContent: "start" }}>
-          <Box>
-            <Typography id="slots-h" variant="h2">
-              Upcoming slots
-            </Typography>
-            <Typography variant="body2" sx={{ color: hall.muted }}>
-              Book a seat, or watch a past round below.
-            </Typography>
-          </Box>
+      {howItWorks}
 
-          {active ? (
-            <>
-              <Box role="tablist" aria-label="Day" sx={{ display: "flex", gap: 0.75, overflowX: "auto", pb: 0.5 }}>
-                {days.map((d) => {
-                  const on = d.dayKey === active.dayKey;
-                  return (
+      <Box component="section" aria-labelledby="slots-h" sx={{ minWidth: 0, display: "grid", gap: 1.75, alignContent: "start" }}>
+        <Box>
+          <Typography id="slots-h" variant="h2">
+            Upcoming slots
+          </Typography>
+          <Typography variant="body2" sx={{ color: hall.muted }}>
+            Book a seat, or watch a past round below.
+          </Typography>
+        </Box>
+
+        {active ? (
+          <>
+            <Box role="tablist" aria-label="Day" sx={{ display: "flex", gap: 0.75, overflowX: "auto", pb: 0.5 }}>
+              {days.map((d) => {
+                const on = d.dayKey === active.dayKey;
+                return (
+                  <ButtonBase
+                    key={d.dayKey}
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => setDay(d.dayKey)}
+                    sx={{
+                      flexShrink: 0,
+                      px: 1.75,
+                      py: 1,
+                      borderRadius: 999,
+                      fontSize: 14,
+                      fontWeight: 700,
+                      bgcolor: on ? hall.ink : hall.panel,
+                      color: on ? "#fff" : hall.ink,
+                      boxShadow: on ? "none" : `inset 0 0 0 1px ${hall.field}`,
+                      "&:hover": { boxShadow: on ? "none" : `inset 0 0 0 1px ${hall.ink}` },
+                    }}
+                  >
+                    {dayLabel(d.dayKey, now, timeZone)}
+                  </ButtonBase>
+                );
+              })}
+            </Box>
+            <Box role="tabpanel" component="ul" sx={{ ...panel, m: 0, p: 0, listStyle: "none", overflow: "hidden" }}>
+              {active.slots.map((s, i) => {
+                const on = s.slotId === selected;
+                const full = isFull(s.stats);
+                const label = seatsLabel(s.stats);
+                const hint = waitHint(s.stats);
+                return (
+                  <Box component="li" key={s.slotId} sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2, px: 2.25, py: 1.5, borderTop: i ? `1px solid ${hall.lineSoft}` : 0, bgcolor: on ? hall.greenTint : "transparent" }}>
+                    <Box sx={{ width: 92, fontSize: 18, fontWeight: 800 }}>{timeLabel(s.slotId, timeZone)}</Box>
+                    <Box sx={{ flex: "999 1 200px", display: "grid", gap: 0.25 }}>
+                      <Box sx={{ fontSize: 14, fontWeight: 600, color: full ? hall.muted : hall.ink }}>{label}</Box>
+                      {hint && <Box sx={{ fontSize: 13, fontWeight: 600, color: hall.greenDeep }}>{hint}</Box>}
+                    </Box>
                     <ButtonBase
-                      key={d.dayKey}
-                      role="tab"
-                      aria-selected={on}
-                      onClick={() => setDay(d.dayKey)}
+                      aria-pressed={on}
+                      disabled={full}
+                      aria-label={`Book ${timeLabel(s.slotId, timeZone)}, ${label}${hint ? `. ${hint}` : ""}`}
+                      onClick={() => pick(s.slotId)}
                       sx={{
-                        flexShrink: 0,
-                        px: 1.75,
-                        py: 1,
-                        borderRadius: 999,
                         fontSize: 14,
                         fontWeight: 700,
-                        bgcolor: on ? hall.ink : hall.panel,
+                        px: 1.5,
+                        py: 1,
+                        minHeight: 40,
+                        borderRadius: "8px",
+                        bgcolor: on ? hall.green : hall.panel,
                         color: on ? "#fff" : hall.ink,
                         boxShadow: on ? "none" : `inset 0 0 0 1px ${hall.field}`,
                         "&:hover": { boxShadow: on ? "none" : `inset 0 0 0 1px ${hall.ink}` },
+                        "&.Mui-disabled": { color: hall.muted, bgcolor: hall.chip, boxShadow: "none" },
                       }}
                     >
-                      {dayLabel(d.dayKey, now, timeZone)}
+                      {full ? "Full" : on ? "Selected" : "Book"}
                     </ButtonBase>
-                  );
-                })}
-              </Box>
-              <Box role="tabpanel" component="ul" sx={{ ...panel, m: 0, p: 0, listStyle: "none", overflow: "hidden" }}>
-                {active.slots.map((s, i) => {
-                  const on = s.slotId === selected;
-                  const full = isFull(s.stats);
-                  const label = seatsLabel(s.stats);
-                  const hint = waitHint(s.stats);
-                  return (
-                    <Box component="li" key={s.slotId} sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2, px: 2.25, py: 1.5, borderTop: i ? `1px solid ${hall.lineSoft}` : 0, bgcolor: on ? hall.greenTint : "transparent" }}>
-                      <Box sx={{ width: 92, fontSize: 18, fontWeight: 800 }}>{timeLabel(s.slotId, timeZone)}</Box>
-                      <Box sx={{ flex: "999 1 200px", display: "grid", gap: 0.25 }}>
-                        <Box sx={{ fontSize: 14, fontWeight: 600, color: full ? hall.muted : hall.ink }}>{label}</Box>
-                        {hint && <Box sx={{ fontSize: 13, fontWeight: 600, color: hall.greenDeep }}>{hint}</Box>}
-                      </Box>
-                      <ButtonBase
-                        aria-pressed={on}
-                        disabled={full}
-                        aria-label={`Book ${timeLabel(s.slotId, timeZone)}, ${label}${hint ? `. ${hint}` : ""}`}
-                        onClick={() => pick(s.slotId)}
-                        sx={{
-                          fontSize: 14,
-                          fontWeight: 700,
-                          px: 1.5,
-                          py: 1,
-                          minHeight: 40,
-                          borderRadius: "8px",
-                          bgcolor: on ? hall.green : hall.panel,
-                          color: on ? "#fff" : hall.ink,
-                          boxShadow: on ? "none" : `inset 0 0 0 1px ${hall.field}`,
-                          "&:hover": { boxShadow: on ? "none" : `inset 0 0 0 1px ${hall.ink}` },
-                          "&.Mui-disabled": { color: hall.muted, bgcolor: hall.chip, boxShadow: "none" },
-                        }}
-                      >
-                        {full ? "Full" : on ? "Selected" : "Book"}
-                      </ButtonBase>
-                    </Box>
-                  );
-                })}
-              </Box>
-              <Typography variant="body2" sx={{ color: hall.muted }}>
-                Times are in your time zone ({timeZone}). Booking closes 5 minutes before each round.
-                {remote === "unavailable" && " Seat counts are unavailable right now."}
-              </Typography>
-            </>
-          ) : (
-            <Typography sx={{ color: hall.muted }}>No slots are open right now. New slots open daily, 7 days ahead.</Typography>
-          )}
-
-          <Typography id="archive" variant="h2" sx={{ mt: 2, scrollMarginTop: 80 }}>
-            Past rounds
-          </Typography>
-          {replays.length ? (
-            <Box component="ul" aria-labelledby="archive" sx={{ ...panel, m: 0, p: 0, listStyle: "none", overflow: "hidden" }}>
-              {replays.map((r, i) => (
-                <Box component="li" key={r.roundId} sx={{ borderTop: i ? `1px solid ${hall.lineSoft}` : 0 }}>
-                  <Box component="a" href={`/r/${r.roundId}`} sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, px: 2.25, py: 1.5, textDecoration: "none", color: hall.ink, "&:hover": { bgcolor: hall.ground } }}>
-                    <Box sx={{ flex: "999 1 220px", fontWeight: 700 }}>{r.product?.name ?? "Round"}</Box>
-                    <Box sx={{ fontSize: 14, color: hall.muted }}>@{r.sellerHandle} → @{r.buyerHandle} · Sold {r.votesSold} · Not sold {r.votesNotSold}</Box>
                   </Box>
-                </Box>
-              ))}
+                );
+              })}
             </Box>
-          ) : (
-            <Typography sx={{ color: hall.muted }}>Replays of every round appear here after it ends.</Typography>
-          )}
-        </Box>
+            <Typography variant="body2" sx={{ color: hall.muted }}>
+              Times are in your time zone ({timeZone}). Booking closes 5 minutes before each round.
+              {remote === "unavailable" && " Seat counts are unavailable right now."}
+            </Typography>
+          </>
+        ) : (
+          <Typography sx={{ color: hall.muted }}>No slots are open right now. New slots open daily, 7 days ahead.</Typography>
+        )}
 
-        {howItWorks}
+        <Typography id="archive" variant="h2" sx={{ mt: 2, scrollMarginTop: 80 }}>
+          Past rounds
+        </Typography>
+        {replays.length ? (
+          <Box component="ul" aria-labelledby="archive" sx={{ ...panel, m: 0, p: 0, listStyle: "none", overflow: "hidden" }}>
+            {replays.map((r, i) => (
+              <Box component="li" key={r.roundId} sx={{ borderTop: i ? `1px solid ${hall.lineSoft}` : 0 }}>
+                <Box component="a" href={`/r/${r.roundId}`} sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, px: 2.25, py: 1.5, textDecoration: "none", color: hall.ink, "&:hover": { bgcolor: hall.ground } }}>
+                  <Box sx={{ flex: "999 1 220px", fontWeight: 700 }}>{r.product?.name ?? "Round"}</Box>
+                  <Box sx={{ fontSize: 14, color: hall.muted }}>@{r.sellerHandle} → @{r.buyerHandle} · Sold {r.votesSold} · Not sold {r.votesNotSold}</Box>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        ) : (
+          <Typography sx={{ color: hall.muted }}>Replays of every round appear here after it ends.</Typography>
+        )}
       </Box>
     </>
   );

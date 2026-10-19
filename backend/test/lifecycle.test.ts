@@ -59,14 +59,17 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     expect(body.slots.find((s: any) => s.slotId === SLOT)).toMatchObject({ sellers: 3, buyers: 3, waitingSellers: 1, waitingBuyers: 1, rounds: 2 });
   });
 
-  test("T-5m: sweep pairs leftovers, opens every round once, falls back to canned briefs", async () => {
+  test("T-5m: sweep pairs leftovers and falls back to canned briefs; T-2m: opens every round once", async () => {
     await at(T - 5 * MIN);
-    await at(T - 5 * MIN + 1000); // a second tick must not create more stages
-    expect(fake.creates).toBe(3);
     const kai = await api("GET", "/ticket", undefined, t.kai!.ticket);
     expect(kai.body.booking).toMatchObject({ status: "paired", opponentHandle: "late" });
+    expect(await getRound(r1)).toMatchObject({ status: "paired", briefs: { source: "fallback" } });
+    expect(fake.creates).toBe(0); // no stage (and no IVS billing) until T-2m
+    await at(T - 2 * MIN);
+    await at(T - 2 * MIN + 1000); // a second tick must not create more stages
+    expect(fake.creates).toBe(3);
     const round = await getRound(r1);
-    expect(round).toMatchObject({ status: "ready", briefs: { source: "fallback" } });
+    expect(round).toMatchObject({ status: "ready" });
     expect(fake.stages.has(round!.stageArn!)).toBe(true);
     const products = await Promise.all([r1, r2, kai.body.booking.roundId].map(async (id) => (await getRound(id))!.briefs!.product.name));
     expect(new Set(products).size).toBe(3); // rounds in one slot never share a canned product
@@ -81,10 +84,10 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     expect((await api("GET", "/rounds/not-a-uuid")).status).toBe(404);
   });
 
-  test("briefs: own side only, from T-30s", async () => {
-    setSystemTime(new Date(T - MIN));
+  test("briefs: own side only, from T-5m", async () => {
+    setSystemTime(new Date(T - 6 * MIN));
     expect((await api("GET", `/rounds/${r1}/brief`, undefined, t.amit!.ticket)).body.error.code).toBe("brief_not_yet");
-    setSystemTime(new Date(T - 20_000));
+    setSystemTime(new Date(T - 5 * MIN));
     const seller = await api("GET", `/rounds/${r1}/brief`, undefined, t.amit!.ticket);
     const buyer = await api("GET", `/rounds/${r1}/brief`, undefined, t.riya!.ticket);
     const round = await getRound(r1);

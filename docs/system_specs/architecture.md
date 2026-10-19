@@ -98,7 +98,7 @@ Slots: every 15 minutes, 4:00–8:45 PM `America/Los_Angeles`. Bookable from 7 d
 ```mermaid
 stateDiagram-v2
   [*] --> paired: buyer/seller booking pairs (POST /bookings)
-  paired --> ready: SlotTick at ≥ T-5m<br/>create stage + chat room
+  paired --> ready: SlotTick at ≥ T-2m<br/>create stage + chat room
   ready --> live: SlotTick at ≥ T<br/>both publishing → start composition
   ready --> cancelled: SlotTick at ≥ T<br/>someone missing → delete stage + room
   live --> ended: SlotTick at ≥ startedAt + 2 min<br/>buzzer event, stop composition, delete stage
@@ -112,8 +112,8 @@ Timeline for one slot:
 | Time | What happens |
 |---|---|
 | Booking | Pairing first-come-first-serve; `ROUND` created with status `paired`. Stream → `GenerateBriefs`. |
-| T-5m | `SlotTick`: pair leftover waiters (fixes simultaneous-booking race), mark the rest `no_opponent`, create stage + chat room for each paired round, retry missing briefs (fallback list at this point). Status `ready`. Participants and spectators can join. |
-| T-30s | Briefs become readable (`GET /rounds/{id}/brief`, each side sees only its own). |
+| T-5m | `SlotTick`: pair leftover waiters (fixes simultaneous-booking race), mark the rest `no_opponent`, retry missing briefs (fallback list at this point, never repeating a product within the slot). Briefs become readable (`GET /rounds/{id}/brief`, each side sees only its own). Status stays `paired`. |
+| T-2m | `SlotTick`: create stage + chat room for each paired round. Status `ready`. Participants and spectators can join. Opening late keeps billed IVS participant-minutes down; ticks fire ~24 s past the minute, so players get ~1.5 min to join. |
 | T … T+1m | `SlotTick`: the tick in the minute before T waits for T, then polls the stage every 2 s for up to 50 s from its own start (under the tick interval, so polls never overlap); later ticks check once. Clients count 3-2-1 down to T. Both participants publishing → `StartComposition` (store `compositionArn` + `recordingPrefix`), `startedAt`, status `live`, `round_started` chat event. Still missing at T+1m → status `cancelled` (`no_show`), `round_cancelled` event, stage + room deleted. |
 | startedAt + 2 min | Client shows the buzzer. The tick before the buzzer (within 15 s) waits for it, then: `buzzer` event, `StopComposition`, delete stage, status `ended`, `endedAt`. Voting opens. |
 | T+15m | `SlotTick`: delete chat room, status `closed`. Once `<recordingPrefix>/events/recording-ended.json` exists in S3, set `recordingPath` and list it in the replay feed. |
@@ -131,7 +131,7 @@ All responses are JSON. Errors are `{ error: { code, message } }` with a user-sa
 | `GET /ticket` | `x-ticket` | The booking for a ticket, incl. opponent and round | done / 001 |
 | `GET /rounds/live` | public | Rounds in `ready`/`live` for the current slot | 009 |
 | `GET /rounds/{roundId}` | public | Round status, handles, times, tally, replay URL; product + seller sheet from `live`, buyer persona from `ended` | 009 |
-| `GET /rounds/{roundId}/brief` | `x-ticket` | Your own side's brief, from T-30s | 009 |
+| `GET /rounds/{roundId}/brief` | `x-ticket` | Your own side's brief, from T-5m | 009 |
 | `POST /rounds/{roundId}/join` | `x-ticket` | Participant stage token (PUBLISH+SUBSCRIBE) + receive-only chat token | 009 |
 | `POST /rounds/{roundId}/watch` | public | `{ voterId }` → SUBSCRIBE-only stage token | 009 |
 | `POST /rounds/{roundId}/chat-token` | public | `{ voterId, nickname }` → SEND_MESSAGE chat token | 010 |

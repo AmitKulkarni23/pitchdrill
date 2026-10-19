@@ -8,7 +8,10 @@ import { pacificDate, slotsForDate } from "./slots";
 
 // Round lifecycle (docs/system_specs/architecture.md §4). Every step is a conditional transition, so ticks can repeat.
 const MIN = 60_000;
+/** T-5m: booking has closed; pair leftovers and make sure every round has briefs (revealed from here). */
 const OPEN_BEFORE = 5 * MIN;
+/** T-2m: create the stage and chat room. Later means fewer billed IVS minutes; earlier gives players time to join. */
+const STAGE_BEFORE = 2 * MIN;
 /** Participants get this long after T to start publishing before the round is cancelled as a no-show. */
 const NO_SHOW_GRACE = MIN;
 const CLOSE_AFTER = 15 * MIN;
@@ -53,13 +56,14 @@ async function tickSlot(slotId: string, now: number) {
 
 async function stepRound(r: RoundMeta, t: number, now: number, products: Set<string>) {
   switch (r.status) {
-    case "paired":
-      return openRound(r, products);
+    case "paired": {
+      await ensureBriefs(r, products);
+      if (t - now > STAGE_BEFORE) return;
+      const ready = await openRound(r);
+      return ready ? stepReady(ready, t, now) : undefined; // this tick may be the one just before T
+    }
     case "ready":
-      if (now >= t) return startOrCancel(r, t, now);
-      if (t - now > START_LEAD) return;
-      await sleep(t - now);
-      return startOrCancel(r, t, t, now + START_POLL);
+      return stepReady(r, t, now);
     case "live": {
       const endAt = Date.parse(r.startedAt!) + ROUND_MS;
       if (endAt - now > END_LEAD) return;
@@ -75,8 +79,16 @@ async function stepRound(r: RoundMeta, t: number, now: number, products: Set<str
   }
 }
 
-/** T-5m: make sure briefs exist, then create the stage and chat room. */
-async function openRound(r: RoundMeta, products: Set<string>) {
+/** From T: start or cancel. The tick just before T waits for T and polls, so the round starts on the dot. */
+async function stepReady(r: RoundMeta, t: number, now: number) {
+  if (now >= t) return startOrCancel(r, t, now);
+  if (t - now > START_LEAD) return;
+  await sleep(t - now);
+  return startOrCancel(r, t, t, now + START_POLL);
+}
+
+/** T-5m: briefs from OpenRouter, or a canned one when it fails, so a round never starts without them. */
+async function ensureBriefs(r: RoundMeta, products: Set<string>) {
   if (!r.briefs) {
     let briefs;
     try {
@@ -90,13 +102,18 @@ async function openRound(r: RoundMeta, products: Set<string>) {
     products.add(briefs.product.name);
     await saveBriefs(r.roundId, briefs);
   }
+}
+
+/** T-2m: create the stage and chat room. Returns the ready round, or null if a concurrent tick opened it first. */
+async function openRound(r: RoundMeta): Promise<RoundMeta | null> {
   const [stageArn, chatRoomArn] = await Promise.all([ivs.createStage(r.roundId), ivs.createRoom(r.roundId)]);
   if (await transition(r.roundId, "paired", { status: "ready", stageArn, chatRoomArn })) {
     logger.info("Round ready", { roundId: r.roundId, stageArn, chatRoomArn });
-  } else {
-    // A concurrent tick opened it first: drop the duplicates.
-    await Promise.all([ivs.deleteStage(stageArn), ivs.deleteRoom(chatRoomArn)]);
+    return { ...r, status: "ready", stageArn, chatRoomArn };
   }
+  // A concurrent tick opened it first: drop the duplicates.
+  await Promise.all([ivs.deleteStage(stageArn), ivs.deleteRoom(chatRoomArn)]);
+  return null;
 }
 
 /**

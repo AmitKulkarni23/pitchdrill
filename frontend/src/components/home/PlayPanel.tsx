@@ -13,7 +13,7 @@ import type { CreateBookingResponse, Role } from "@/types/api";
 const noop = () => () => {};
 
 const ROLES: { role: Role; label: string; pitch: string }[] = [
-  { role: "seller", label: "Seller", pitch: "Pitch a product you see 30s before" },
+  { role: "seller", label: "Seller", pitch: "Pitch a product you see 5 minutes before" },
   { role: "buyer", label: "Buyer", pitch: "Play a secret persona and push back" },
 ];
 

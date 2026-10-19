@@ -71,7 +71,7 @@ DynamoDB single table `pitchdrill-main` (full layout in `docs/system_specs/data_
 - A slot holds at most 4 rounds: 4 seller seats and 4 buyer seats, enforced in the booking transaction (`409 slot_full`). Pairing is first-come-first-serve at booking: a new booking is paired with the oldest unpaired booking of the opposite role in that slot, creating a round. Pairing uses a conditional write so one booking is never paired twice.
 - Unpaired bookings wait; if still unpaired at slot time they are told no opponent was found.
 - All rounds in a slot start together; the arena page lists live rounds for spectators to pick from.
-- Briefs are generated via OpenRouter when a round is paired and revealed to each side ~30s before the round. The buyer's persona is never shown to the seller.
+- Briefs are generated via OpenRouter when a round is paired and revealed to each side 5 minutes before the round; the IVS stage opens 2 minutes before. The buyer's persona is never shown to the seller.
 - Rounds are 2 minutes, enforced server-side. Spectators watch live and vote "Sold" / "Not sold" at the buzzer.
 - Recordings are kept for replay; votes and comments stay open on replays.
 - Voters are identified by a random voter ID in localStorage: one vote per browser per round, rate-limited.
