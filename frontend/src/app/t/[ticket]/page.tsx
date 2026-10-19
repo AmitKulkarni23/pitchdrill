@@ -112,7 +112,7 @@ function TicketPage() {
       <RoundClock round={round} now={now} />
       {round.status === "paired" && !briefOpen && (
         <Box sx={{ ...panel, p: 3 }}>
-          <Typography>Your brief unlocks 5 minutes before the start ({countdown(start - BRIEF_BEFORE - now)} from now), and the arena opens 2 minutes before. Keep this page open; it updates on its own.</Typography>
+          <Typography>Your brief appears here 5 minutes before the start (in {countdown(start - BRIEF_BEFORE - now)}), and you can join the round 2 minutes before. Keep this page open; it updates on its own.</Typography>
         </Box>
       )}
       {round.status === "cancelled" && <Alert severity="info">{round.cancelReason === "no_show" ? "Both players have to join when the round starts. Book another slot to try again." : "A moderator ended this round."}</Alert>}
@@ -126,8 +126,11 @@ function TicketPage() {
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr" }, gap: 2.5, alignItems: "start" }}>
           <Box sx={{ display: "grid", gap: 2 }}>
             {!arenaOpen ? (
-              <Box sx={{ ...panel, p: 3 }}>
-                <Typography>Read your brief. The arena opens 2 minutes before the start ({countdown(Math.max(0, start - ARENA_BEFORE - now))} from now); join with your mic then.</Typography>
+              <Box sx={{ ...panel, p: 3, display: "grid", gap: 1.5 }}>
+                <Typography>Read your brief while you wait. Joining opens 2 minutes before the start.</Typography>
+                <Button variant="contained" size="large" disabled sx={{ justifySelf: "start" }}>
+                  Join with mic in {countdown(Math.max(0, start - ARENA_BEFORE - now))}
+                </Button>
               </Box>
             ) : join ? (
               <StageVideo token={join.stageToken} publish camera={false} sellerHandle={round.sellerHandle} buyerHandle={round.buyerHandle} />
