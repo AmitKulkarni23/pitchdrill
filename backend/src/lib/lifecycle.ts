@@ -44,15 +44,17 @@ async function tickSlot(slotId: string, now: number) {
   const t = Date.parse(slotId);
   if (now <= t + NO_SHOW_GRACE) await sweepWaiters(slotId); // booking is closed by now; pair or release the leftovers
   const rounds = await roundsOfSlot(slotId);
+  // Products already in this slot, so rounds running side by side never get the same canned brief.
+  const products = new Set(rounds.flatMap((r) => (r.briefs ? [r.briefs.product.name] : [])));
   await Promise.all(
-    rounds.map((r) => stepRound(r, t, now).catch((e) => logger.error("Round step failed", { roundId: r.roundId, status: r.status, error: e as Error }))),
+    rounds.map((r) => stepRound(r, t, now, products).catch((e) => logger.error("Round step failed", { roundId: r.roundId, status: r.status, error: e as Error }))),
   );
 }
 
-async function stepRound(r: RoundMeta, t: number, now: number) {
+async function stepRound(r: RoundMeta, t: number, now: number, products: Set<string>) {
   switch (r.status) {
     case "paired":
-      return openRound(r);
+      return openRound(r, products);
     case "ready":
       if (now >= t) return startOrCancel(r, t, now);
       if (t - now > START_LEAD) return;
@@ -74,7 +76,7 @@ async function stepRound(r: RoundMeta, t: number, now: number) {
 }
 
 /** T-5m: make sure briefs exist, then create the stage and chat room. */
-async function openRound(r: RoundMeta) {
+async function openRound(r: RoundMeta, products: Set<string>) {
   if (!r.briefs) {
     let briefs;
     try {
@@ -82,9 +84,10 @@ async function openRound(r: RoundMeta) {
       metrics.addMetric("BriefGenerated", MetricUnit.Count, 1);
     } catch (e) {
       logger.warn("Brief generation failed at open, using fallback", { roundId: r.roundId, error: (e as Error).message });
-      briefs = fallbackBriefs();
+      briefs = fallbackBriefs(products); // picked and added in one synchronous step, so parallel rounds can't collide
       metrics.addMetric("BriefFallbackUsed", MetricUnit.Count, 1);
     }
+    products.add(briefs.product.name);
     await saveBriefs(r.roundId, briefs);
   }
   const [stageArn, chatRoomArn] = await Promise.all([ivs.createStage(r.roundId), ivs.createRoom(r.roundId)]);

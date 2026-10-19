@@ -34,7 +34,10 @@ test("two failures → throws", async () => {
 test("parseBriefs rejects missing fields; fallback list is complete", () => {
   expect(parseBriefs(JSON.stringify({ ...good, buyer: [] }))).toBeNull();
   expect(parseBriefs(JSON.stringify({ ...good, seller: "One paragraph." }))).toBeNull();
-  expect(FALLBACK_BRIEFS.length).toBeGreaterThanOrEqual(10);
+  expect(FALLBACK_BRIEFS.length).toBeGreaterThanOrEqual(50);
+  expect(new Set(FALLBACK_BRIEFS.map((b) => b.product.name)).size).toBe(FALLBACK_BRIEFS.length);
   for (const b of FALLBACK_BRIEFS) expect(parseBriefs(JSON.stringify(b))).not.toBeNull();
   expect(fallbackBriefs().source).toBe("fallback");
+  const allButOne = new Set(FALLBACK_BRIEFS.slice(1).map((b) => b.product.name));
+  expect(fallbackBriefs(allButOne).product.name).toBe(FALLBACK_BRIEFS[0]!.product.name);
 });

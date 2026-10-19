@@ -80,4 +80,9 @@ export async function generateBriefs(): Promise<Briefs> {
   }
 }
 
-export const fallbackBriefs = (): Briefs => ({ ...FALLBACK_BRIEFS[Math.floor(Math.random() * FALLBACK_BRIEFS.length)]!, source: "fallback" });
+/** A random canned brief whose product isn't in `exclude` (any one if every product is taken). */
+export function fallbackBriefs(exclude: ReadonlySet<string> = new Set()): Briefs {
+  const fresh = FALLBACK_BRIEFS.filter((b) => !exclude.has(b.product.name));
+  const pool = fresh.length ? fresh : FALLBACK_BRIEFS;
+  return { ...pool[Math.floor(Math.random() * pool.length)]!, source: "fallback" };
+}

@@ -68,6 +68,8 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     const round = await getRound(r1);
     expect(round).toMatchObject({ status: "ready", briefs: { source: "fallback" } });
     expect(fake.stages.has(round!.stageArn!)).toBe(true);
+    const products = await Promise.all([r1, r2, kai.body.booking.roundId].map(async (id) => (await getRound(id))!.briefs!.product.name));
+    expect(new Set(products).size).toBe(3); // rounds in one slot never share a canned product
   });
 
   test("public round never exposes briefs or ARNs; live list shows ready rounds", async () => {
