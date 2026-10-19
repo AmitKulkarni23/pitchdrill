@@ -1,6 +1,6 @@
 // Every read/write is guarded: storage can be missing or throw (private mode, blocked site data).
 
-const KEYS = { voterId: "pd.voterId", nickname: "pd.nickname", tickets: "pd.tickets", played: "pd.playedRounds" } as const;
+const KEYS = { voterId: "pd.voterId", nickname: "pd.nickname", handle: "pd.handle", tickets: "pd.tickets", played: "pd.playedRounds" } as const;
 
 function read(key: string): string | null {
   try {
@@ -31,6 +31,10 @@ export function getVoterId(): string {
 
 export const getNickname = (): string | null => read(KEYS.nickname);
 export const setNickname = (nickname: string): void => write(KEYS.nickname, nickname);
+
+/** Last handle this browser booked with, prefilled on the next booking. */
+export const getHandle = (): string | null => read(KEYS.handle);
+export const setHandle = (handle: string): void => write(KEYS.handle, handle);
 
 export function getTickets(): string[] {
   try {

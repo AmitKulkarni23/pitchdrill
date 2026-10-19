@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Alert, Box, Button, ButtonBase, TextField, Typography } from "@mui/material";
 import { api, ApiError } from "@/lib/api";
 import { buildIcs, downloadIcs } from "@/lib/ics";
 import { countdown, slotLabel, timeLabel } from "@/lib/slots";
-import { addTicket } from "@/lib/storage";
+import { addTicket, getHandle, setHandle as saveHandle } from "@/lib/storage";
 import { isValidHandle } from "@/lib/validation";
 import { hall, panel } from "@/config/tokens";
 import type { CreateBookingResponse, Role } from "@/types/api";
+
+const noop = () => () => {};
 
 const ROLES: { role: Role; label: string; pitch: string }[] = [
   { role: "seller", label: "Seller", pitch: "Pitch a product you see 30s before" },
@@ -23,7 +25,10 @@ interface Props {
 
 export function PlayPanel({ slotId, timeZone, now }: Props) {
   const [role, setRole] = useState<Role>("seller");
-  const [handle, setHandle] = useState("");
+  // Prefilled with the last handle booked from this browser; typing overrides it.
+  const storedHandle = useSyncExternalStore(noop, getHandle, () => null);
+  const [typed, setHandle] = useState<string | null>(null);
+  const handle = typed ?? storedHandle ?? "";
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +47,7 @@ export function PlayPanel({ slotId, timeZone, now }: Props) {
     try {
       const res = await api.post<CreateBookingResponse>("/bookings", { slotId, handle, role });
       addTicket(res.ticket);
+      saveHandle(res.booking.handle);
       setResult(res);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
@@ -61,7 +67,7 @@ export function PlayPanel({ slotId, timeZone, now }: Props) {
 
   function bookAnother() {
     setResult(null);
-    setHandle("");
+    setHandle(null);
     setTouched(false);
     setCopied(false);
   }
