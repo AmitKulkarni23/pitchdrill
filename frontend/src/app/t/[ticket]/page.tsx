@@ -10,7 +10,7 @@ import { hall, panel } from "@/config/tokens";
 import { useNow, useTimeZone } from "@/hooks/useClock";
 import { useRound } from "@/hooks/useRound";
 import { api, ApiError } from "@/lib/api";
-import { countdown, slotLabel } from "@/lib/slots";
+import { countdown, slotLabel, timeLabel } from "@/lib/slots";
 import { addPlayedRound, addTicket } from "@/lib/storage";
 import type { Booking, BriefResponse, JoinResponse } from "@/types/api";
 
@@ -136,7 +136,7 @@ function TicketPage() {
               <StageVideo token={join.stageToken} publish camera={false} sellerHandle={round.sellerHandle} buyerHandle={round.buyerHandle} />
             ) : (
               <Box sx={{ ...panel, p: 3, display: "grid", gap: 1.5 }}>
-                <Typography>Join now with your mic. Rounds are audio only. The round starts when both of you are in at the start time; if someone is missing a minute after, it&apos;s cancelled.</Typography>
+                <Typography>Join now so you&apos;re ready. The round is audio only and starts at {timeLabel(round.slotId, timeZone)} once you&apos;re both in. If either of you hasn&apos;t joined by {timeLabel(new Date(start + 60_000).toISOString(), timeZone)}, it&apos;s cancelled.</Typography>
                 {joinError && <Alert severity="error">{joinError}</Alert>}
                 <Button variant="contained" size="large" onClick={joinRound} sx={{ justifySelf: "start" }}>Join with mic</Button>
               </Box>
