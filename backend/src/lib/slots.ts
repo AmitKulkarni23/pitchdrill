@@ -1,6 +1,6 @@
 export const SLOT_TZ = "America/Los_Angeles";
 const FIRST_MINUTE = 16 * 60; // 4:00 PM
-const LAST_MINUTE = 20 * 60 + 45; // 8:45 PM
+const LAST_MINUTE = 21 * 60 + 30; // ponytail: 9:30 PM for testing, back to 20 * 60 + 45 (8:45 PM) after
 const STEP_MINUTES = 15;
 
 const partsFormat = new Intl.DateTimeFormat("en-US", {
