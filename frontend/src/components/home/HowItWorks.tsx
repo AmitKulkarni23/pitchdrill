@@ -18,12 +18,12 @@ export function HowItWorks() {
       <Box component="ol" sx={{ ...panel, m: 0, p: 0, listStyle: "none", overflow: "hidden", display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, gap: "1px", bgcolor: hall.lineSoft }}>
         {STEPS.map((s, i) => (
           <Box component="li" key={s.title} sx={{ display: "flex", gap: 1.75, px: 2.25, py: 2, bgcolor: hall.panel }}>
-            <Box aria-hidden sx={{ width: 30, height: 30, flexShrink: 0, borderRadius: "50%", bgcolor: hall.greenTint, color: hall.greenDeep, fontWeight: 800, fontSize: 14, display: "grid", placeItems: "center" }}>
+            <Box aria-hidden sx={{ width: 32, height: 32, flexShrink: 0, borderRadius: "50%", bgcolor: hall.greenTint, color: hall.greenDeep, fontWeight: 800, fontSize: 15, display: "grid", placeItems: "center" }}>
               {i + 1}
             </Box>
             <Box>
-              <Typography sx={{ fontWeight: 700, fontSize: 15 }}>{s.title}</Typography>
-              <Typography variant="body2" sx={{ color: hall.muted }}>
+              <Typography sx={{ fontWeight: 700, fontSize: 17 }}>{s.title}</Typography>
+              <Typography sx={{ color: hall.muted, fontSize: 16, mt: 0.25 }}>
                 {s.body}
               </Typography>
             </Box>
