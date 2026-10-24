@@ -130,7 +130,7 @@ OpenRouter key (set by the user, never in chat or Git): `aws secretsmanager put-
 
 Contact-form address (set by the user before the first deploy that includes it, never in Git): `aws ssm put-parameter --region us-west-2 --name /pitchdrill/contact-email --type String --value '<email>'`. SES emails it a verification link on deploy; the form sends once it's clicked. Locally, export `CONTACT_EMAIL_ENV` before `bun run dev` to send real mail.
 
-Slack alerts: authorize the Slack workspace once in the AWS Chatbot console (no API for it), then set `SLACK_WORKSPACE_ID` and `SLACK_CHANNEL_ID` in `infra/lib/backend-stack.ts`. Until then alarms only reach SNS `pitchdrill-alerts`. CloudWatch dashboard: `pitchdrill`.
+Slack alerts: authorize the Slack workspace once in the AWS Chatbot console (no API for it), then set `SLACK_WORKSPACE_ID`, `SLACK_CHANNEL_ID` (alarms) and `SLACK_BOOKINGS_CHANNEL_ID` (one message per booking) in `infra/lib/backend-stack.ts`. Until then alarms only reach SNS `pitchdrill-alerts`. CloudWatch dashboard: `pitchdrill`.
 
 CloudWatch RUM: set Vercel production env `NEXT_PUBLIC_RUM_APP_MONITOR_ID` to the `PitchDrillRumAppMonitorIdOutput` stack output, then redeploy the frontend. Unset (locally, previews) means RUM is off.
 

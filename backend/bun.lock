@@ -15,6 +15,7 @@
         "@aws-sdk/client-s3": "^3.1152.0",
         "@aws-sdk/client-secrets-manager": "^3.1152.0",
         "@aws-sdk/client-sesv2": "^3.1156.0",
+        "@aws-sdk/client-sns": "^3.1156.0",
         "@aws-sdk/lib-dynamodb": "^3.1151.0",
       },
       "devDependencies": {
@@ -48,6 +49,8 @@
     "@aws-sdk/client-secrets-manager": ["@aws-sdk/client-secrets-manager@3.1152.0", "", { "dependencies": { "@aws-sdk/core": "^3.978.3", "@aws-sdk/credential-provider-node": "^3.972.86", "@aws-sdk/types": "^3.974.6", "@smithy/core": "^3.35.2", "@smithy/fetch-http-handler": "^5.8.0", "@smithy/node-http-handler": "^4.12.1", "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-6Czhl2ksbZjjIjvj74gif1lyHYI5Xa/2KXFlrpY47d3uU7yabu8NJhRl8w01YQoB/WXdaPleUn8q0uwopgTxAw=="],
 
     "@aws-sdk/client-sesv2": ["@aws-sdk/client-sesv2@3.1156.0", "", { "dependencies": { "@aws-sdk/core": "^3.978.5", "@aws-sdk/credential-provider-node": "^3.972.88", "@aws-sdk/signature-v4-multi-region": "^3.996.49", "@aws-sdk/types": "^3.975.0", "@smithy/core": "^3.36.1", "@smithy/fetch-http-handler": "^5.8.0", "@smithy/node-http-handler": "^4.12.1", "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-ghZ4piyZWPIHscYsBhFQtRAjealFX/f4a+d/OQPWijIvH9nGRfbcuL5ssKyh0e+iStcXH1KzI/YuwxgoFMaYSw=="],
+
+    "@aws-sdk/client-sns": ["@aws-sdk/client-sns@3.1156.0", "", { "dependencies": { "@aws-sdk/core": "^3.978.5", "@aws-sdk/credential-provider-node": "^3.972.88", "@aws-sdk/types": "^3.975.0", "@smithy/core": "^3.36.1", "@smithy/fetch-http-handler": "^5.8.0", "@smithy/node-http-handler": "^4.12.1", "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-WiAW6FzBNJyGMnBe2FopquQOVdDqfnnCfbdyf26Vs0MW8dMZkgX4SeqZkcP0vEw+K1tW8Tf8yH9uVrMoRdIi+A=="],
 
     "@aws-sdk/core": ["@aws-sdk/core@3.978.5", "", { "dependencies": { "@aws-sdk/types": "^3.975.0", "@aws-sdk/xml-builder": "^3.972.41", "@aws/lambda-invoke-store": "^0.3.0", "@smithy/core": "^3.36.1", "@smithy/signature-v4": "^5.7.4", "@smithy/types": "^4.19.0", "bowser": "^2.11.0", "tslib": "^2.6.2" } }, "sha512-ruI0AWqcrfL20XDS6SwZIJFPOBZ6N0ADa9nLzWlBhxk1aoUjbUX3JkTR9vEmk7o35XpAHi68ahZ4T6RE2U9XyA=="],
 

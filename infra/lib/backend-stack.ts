@@ -34,7 +34,8 @@ const OPENROUTER_MODEL = 'anthropic/claude-haiku-5.5';
 // Slack channel for alarm notifications via AWS Chatbot. The workspace must first be authorized once in the
 // Chatbot console (an OAuth click; there is no API for it). Until both IDs are set, alarms only go to the SNS topic.
 const SLACK_WORKSPACE_ID = 'T09F859DKKN'; // WillItWork
-const SLACK_CHANNEL_ID = 'C0CBN0HLGJ1';
+const SLACK_CHANNEL_ID = 'C0CBN0HLGJ1'; // #pitchdrill-alerts
+const SLACK_BOOKINGS_CHANNEL_ID = ''; // #pitchdrill-bookings: one message per booking
 
 const pascal = (name: string) => `${name[0]!.toUpperCase()}${name.slice(1)}`;
 
@@ -210,6 +211,10 @@ export class PitchDrillBackendStack extends cdk.Stack {
     ivsPolicies.chatToken(fns.createChatToken!);
     ivsPolicies.sendEvent(fns.castVote!);
     ivsPolicies.endRound(fns.adminEndRound!);
+    // Every booking is posted to Slack: createBooking publishes a Chatbot custom notification to this topic.
+    const bookingsTopic = new sns.Topic(this, 'PitchDrillBookingsTopic', { topicName: 'pitchdrill-bookings' });
+    bookingsTopic.grantPublish(fns.createBooking!);
+    fns.createBooking!.addEnvironment('BOOKINGS_TOPIC_ARN_ENV', bookingsTopic.topicArn);
     // Hide takes the replay off the CDN: list + tag the recording's objects, then invalidate the cached copies.
     fns.adminHideRound!.addEnvironment('RECORDINGS_BUCKET_ENV', recordings.bucketName);
     fns.adminHideRound!.addEnvironment('RECORDINGS_CDN_ID_ENV', cdn.distributionId);
@@ -499,6 +504,16 @@ export class PitchDrillBackendStack extends cdk.Stack {
         slackChannelId: SLACK_CHANNEL_ID,
         notificationTopics: [alertsTopic],
         // Notifications only: anyone in the channel can at most read CloudWatch, never change anything.
+        guardrailPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchReadOnlyAccess')],
+      });
+    }
+
+    if (SLACK_WORKSPACE_ID && SLACK_BOOKINGS_CHANNEL_ID) {
+      new chatbot.SlackChannelConfiguration(this, 'PitchDrillSlackBookings', {
+        slackChannelConfigurationName: 'pitchdrill-bookings',
+        slackWorkspaceId: SLACK_WORKSPACE_ID,
+        slackChannelId: SLACK_BOOKINGS_CHANNEL_ID,
+        notificationTopics: [bookingsTopic],
         guardrailPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchReadOnlyAccess')],
       });
     }
