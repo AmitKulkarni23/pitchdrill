@@ -135,7 +135,7 @@ function TicketPage({ ticket }: { ticket: string }) {
                 </Button>
               </Box>
             ) : join ? (
-              <StageVideo token={join.stageToken} publish camera={false} live={round.status === "live"} sellerHandle={round.sellerHandle} buyerHandle={round.buyerHandle} />
+              <StageVideo token={join.stageToken} publish camera={false} live={round.status === "live" && now < Date.parse(round.endsAt!)} sellerHandle={round.sellerHandle} buyerHandle={round.buyerHandle} />
             ) : (
               <Box sx={{ ...panel, p: 3, display: "grid", gap: 1.5 }}>
                 <Typography>Join now so you&apos;re ready. The round is audio only and starts at {timeLabel(round.slotId, timeZone)} once you&apos;re both in. If either of you hasn&apos;t joined by {timeLabel(new Date(start + 60_000).toISOString(), timeZone)}, it&apos;s cancelled. <strong>Rounds are recorded and replayed publicly.</strong></Typography>

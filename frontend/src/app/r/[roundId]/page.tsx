@@ -60,7 +60,7 @@ function WatchPage() {
       <RoundClock round={round} now={now} />
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr" }, gap: 2.5, alignItems: "start" }}>
         <Box sx={{ display: "grid", gap: 2.5 }}>
-          {liveish && (token ? <StageVideo token={token} publish={false} live={round.status === "live"} sellerHandle={round.sellerHandle} buyerHandle={round.buyerHandle} /> : watchError && <Alert severity="error">{watchError}</Alert>)}
+          {liveish && (token ? <StageVideo token={token} publish={false} live={round.status === "live" && now < Date.parse(round.endsAt!)} sellerHandle={round.sellerHandle} buyerHandle={round.buyerHandle} /> : watchError && <Alert severity="error">{watchError}</Alert>)}
           {(round.status === "ended" || round.status === "closed") &&
             (round.replayUrl ? (
               <ReplayVideo src={round.replayUrl} />

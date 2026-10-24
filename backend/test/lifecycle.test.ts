@@ -123,7 +123,12 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     expect(live.product.name).toBeString();
     expect(live.briefs.seller).toEqual((await getRound(r1))!.briefs!.seller);
     expect(live.briefs.buyer).toBeUndefined(); // persona stays hidden until the buzzer
+    // This tick also waits out r1's buzzer (T+2m, within END_LEAD); the clock is mocked, timers aren't, so skip the wait.
+    const wait = globalThis.setTimeout;
+    const instant = spyOn(globalThis, "setTimeout").mockImplementation(((fn: () => void) => wait(fn, 0)) as never);
     await at(T + MIN);
+    instant.mockRestore();
+    expect((await getRound(r1))!.status).toBe("ended");
     const cancelled = await getRound(r2);
     expect(cancelled).toMatchObject({ status: "cancelled", cancelReason: "no_show" });
     expect(fake.stages.has(cancelled!.stageArn!)).toBe(false);
@@ -131,7 +136,7 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
 
   test("buzzer at startedAt+2m ends the round; votes once per voter with a live tally", async () => {
     await at(T + 2000 + 2 * MIN);
-    const ended = await getRound(r1);
+    const ended = await getRound(r1); // ended by the T+1m tick, at the buzzer
     expect(ended).toMatchObject({ status: "ended" });
     expect(fake.stages.has(ended!.stageArn!)).toBe(false);
     expect(fake.events.some((e) => e.name === "buzzer")).toBe(true);

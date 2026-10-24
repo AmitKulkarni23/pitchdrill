@@ -16,8 +16,12 @@ const STAGE_BEFORE = 2 * MIN;
 const NO_SHOW_GRACE = MIN;
 const CLOSE_AFTER = 15 * MIN;
 const WINDOW_AFTER = 20 * MIN;
-/** A tick ends rounds whose buzzer falls within this lead, waiting the rest, so rounds last exactly 2 min, not up to 3. */
-const END_LEAD = 15_000;
+/**
+ * A tick ends rounds whose buzzer falls within this lead, waiting the rest, so rounds last exactly 2 min. It must cover
+ * the full tick interval (plus jitter): with less, a buzzer between two ticks waits for the next one. Overlapping ticks
+ * are fine, endRound is a conditional transition. Lead + endRound stays under SlotTick's 90 s timeout.
+ */
+const END_LEAD = MIN + 10_000;
 /**
  * Ticks fire about once a minute, so from the tick just before T each tick polls the stage for up to START_POLL (from T
  * at the earliest) and starts the round the moment both sides publish. START_POLL stays under the tick interval so
