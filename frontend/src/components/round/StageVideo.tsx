@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Box, Button } from "@mui/material";
 import { hall } from "@/config/tokens";
+import { reportError } from "@/lib/rum";
 import type { Role } from "@/types/api";
 
 /** `joined`: publishing anything. `video`: an unmuted camera track (mic-only players have none). `audio`: drives the level meter. */
@@ -41,6 +42,7 @@ export function StageVideo({ token, publish, camera = true, sellerHandle, buyerH
           if (local) setNotice("Couldn't turn on your camera, so you're in on mic only.");
         }
         if (!local) {
+          reportError(new Error("Microphone unavailable"));
           setError("Allow microphone access to play your round, then reload the page.");
           return;
         }
@@ -97,7 +99,8 @@ export function StageVideo({ token, publish, camera = true, sellerHandle, buyerH
       };
       try {
         await stage.join();
-      } catch {
+      } catch (e) {
+        reportError(e);
         setError("Couldn't connect to the round's video. Reload to try again.");
       }
       if (cancelled) leave();

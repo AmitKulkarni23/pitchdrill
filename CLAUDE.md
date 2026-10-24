@@ -132,6 +132,8 @@ Contact-form address (set by the user before the first deploy that includes it, 
 
 Slack alerts: authorize the Slack workspace once in the AWS Chatbot console (no API for it), then set `SLACK_WORKSPACE_ID` and `SLACK_CHANNEL_ID` in `infra/lib/backend-stack.ts`. Until then alarms only reach SNS `pitchdrill-alerts`. CloudWatch dashboard: `pitchdrill`.
 
+CloudWatch RUM: set Vercel production env `NEXT_PUBLIC_RUM_APP_MONITOR_ID` to the `PitchDrillRumAppMonitorIdOutput` stack output, then redeploy the frontend. Unset (locally, previews) means RUM is off.
+
 A failed *first* create strands the retained `pitchdrill-main` table; delete it (deletion protection off first) before redeploying.
 
 ### Vercel

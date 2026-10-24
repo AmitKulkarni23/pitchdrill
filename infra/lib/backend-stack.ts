@@ -16,6 +16,7 @@ import * as ivs from 'aws-cdk-lib/aws-ivs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as rum from 'aws-cdk-lib/aws-rum';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as scheduler from 'aws-cdk-lib/aws-scheduler';
 import * as targets from 'aws-cdk-lib/aws-scheduler-targets';
@@ -405,6 +406,67 @@ export class PitchDrillBackendStack extends cdk.Stack {
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
 
+    // Lambda crashes and timeouts never reach the ERROR log filters above ("Task timed out" is plain text), and the
+    // two non-API Lambdas have no 5xx alarm behind them.
+    new cloudwatch.Alarm(this, 'PitchDrillRoundsStalledAlarm', {
+      alarmName: 'pitchdrill-rounds-stalled',
+      alarmDescription:
+        'SlotTick crashed or timed out, so rounds may not open, start, end or record on time. ' +
+        'Check the PitchDrillSlotTick log group for "Task timed out" or a runtime error.',
+      metric: slotTick.metricErrors({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+    new cloudwatch.Alarm(this, 'PitchDrillBriefsGeneratorCrashingAlarm', {
+      alarmName: 'pitchdrill-briefs-generator-crashing',
+      alarmDescription:
+        'GenerateBriefs crashed or timed out, so new rounds wait for SlotTick to retry their briefs or fall back to canned ones. ' +
+        'Check the PitchDrillGenerateBriefs log group for "Task timed out" or a runtime error.',
+      metric: generateBriefs.metricErrors({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // CloudWatch RUM for the Vercel site (frontend/src/lib/rum.ts): browser errors, failed fetches, Web Vitals.
+    // Browsers send events unsigned, allowed by the resource policy, so there is no Cognito identity pool; RUM
+    // rejects events from any other domain. Events are kept 30 days in the RUM console.
+    const RUM_APP_MONITOR = 'pitchdrill';
+    const rumMonitor = new rum.CfnAppMonitor(this, 'PitchDrillRumAppMonitor', {
+      name: RUM_APP_MONITOR,
+      domainList: ['pitchdrill-azure.vercel.app'],
+      appMonitorConfiguration: { allowCookies: true, enableXRay: false, sessionSampleRate: 1, telemetries: ['errors', 'http', 'performance'] },
+      resourcePolicy: {
+        policyDocument: this.toJsonString({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Principal: '*',
+              Action: 'rum:PutRumEvents',
+              Resource: this.formatArn({ service: 'rum', resource: 'appmonitor', resourceName: RUM_APP_MONITOR }),
+            },
+          ],
+        }),
+      },
+    });
+    const rumMetric = (metricName: string) =>
+      new cloudwatch.Metric({ namespace: 'AWS/RUM', metricName, dimensionsMap: { application_name: RUM_APP_MONITOR }, statistic: 'Sum', period: cdk.Duration.minutes(15) });
+    new cloudwatch.Alarm(this, 'PitchDrillUsersHittingBrowserErrorsAlarm', {
+      alarmName: 'pitchdrill-users-hitting-browser-errors',
+      alarmDescription:
+        'Visitors are hitting JavaScript errors in the browser (page crashes, IVS video or chat failing, mic unavailable). ' +
+        'Open CloudWatch RUM → pitchdrill → Errors for the message, page and browser.',
+      metric: rumMetric('JsErrorCount'),
+      threshold: 5,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
     // Every alarm (and its recovery) goes to one SNS topic; AWS Chatbot posts the topic to Slack.
     const alarms = this.node.findAll().filter((c): c is cloudwatch.Alarm => c instanceof cloudwatch.Alarm);
     const alertsTopic = new sns.Topic(this, 'PitchDrillAlertsTopic', { topicName: 'pitchdrill-alerts' });
@@ -441,7 +503,10 @@ export class PitchDrillBackendStack extends cdk.Stack {
           graph('API latency (ms)', ['p50', 'p99'].map((statistic) => api.metricLatency({ statistic, period: cdk.Duration.minutes(5) }))),
           new cloudwatch.AlarmStatusWidget({ title: 'Alarms', alarms, width: 8, height: 6 }),
         ],
-        [graph('Lambda errors', [...Object.values(fns), slotTick, generateBriefs].map((fn) => fn.metricErrors({ label: fn.node.id, period: cdk.Duration.minutes(5) })), 24)],
+        [
+          graph('Lambda errors', [...Object.values(fns), slotTick, generateBriefs].map((fn) => fn.metricErrors({ label: fn.node.id, period: cdk.Duration.minutes(5) })), 16),
+          graph('Browser errors, RUM (per 15 min)', ['JsErrorCount', 'HttpErrorCount'].map(rumMetric)),
+        ],
       ],
     });
 
@@ -453,6 +518,10 @@ export class PitchDrillBackendStack extends cdk.Stack {
       value: api.apiEndpoint,
       exportName: 'PitchDrillApiUrl',
       description: 'Base URL for the frontend (NEXT_PUBLIC_API_URL)',
+    });
+    new cdk.CfnOutput(this, 'PitchDrillRumAppMonitorIdOutput', {
+      value: rumMonitor.attrId,
+      description: 'Vercel env NEXT_PUBLIC_RUM_APP_MONITOR_ID (production)',
     });
     new cdk.CfnOutput(this, 'PitchDrillRecordingsCdnDomainOutput', {
       value: cdn.distributionDomainName,

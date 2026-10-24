@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, TextField, Typography } from "@mui/material";
 import { api, ApiError } from "@/lib/api";
 import { getNickname, getVoterId, setNickname } from "@/lib/storage";
+import { reportError } from "@/lib/rum";
 import { hall, panel } from "@/config/tokens";
 import type { ChatToken } from "@/types/api";
 
@@ -67,10 +68,14 @@ export function ChatPanel({ roundId, participantToken, onEvent }: { roundId: str
       roomRef.current = { send: async (text) => void (await room!.sendMessage(new SendMessageRequest(text))) };
       try {
         room.connect();
-      } catch {
+      } catch (e) {
+        reportError(e);
         setError("Chat is unavailable right now.");
       }
-    })().catch((e) => setError(e instanceof ApiError ? e.message : "Chat is unavailable right now."));
+    })().catch((e) => {
+      if (!(e instanceof ApiError)) reportError(e); // API failures are already captured by RUM's http telemetry
+      setError(e instanceof ApiError ? e.message : "Chat is unavailable right now.");
+    });
     return () => {
       stopped = true;
       room?.disconnect();
