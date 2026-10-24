@@ -6,15 +6,16 @@ import { hall } from "@/config/tokens";
 import { reportError } from "@/lib/rum";
 import type { Role } from "@/types/api";
 
-/** `stream`: camera only. `joined`: publishing anything. `video`: an unmuted camera track (mic-only players have none). `audio`: drives the level meter, and plays unless `local`. */
+/** `stream`: camera only. `joined`: in the stage. `video`: an unmuted camera track (mic-only players have none). `audio`: drives the level meter, and plays unless `local`. */
 type Side = { stream: MediaStream | null; handle?: string; joined: boolean; video: boolean; audio: MediaStreamTrack | null; local: boolean };
 const EMPTY: Side = { stream: null, joined: false, video: false, audio: null, local: false };
 
 /**
  * Seller left, buyer right, over IVS Real-Time. `publish` turns on this browser's mic, plus the camera
  * when `camera` is set (participant token); spectators pass a SUBSCRIBE-only token.
+ * Nobody receives the other side's audio or video until `live` (the round has started).
  */
-export function StageVideo({ token, publish, camera = true, sellerHandle, buyerHandle, onState }: { token: string; publish: boolean; camera?: boolean; sellerHandle: string; buyerHandle: string; onState?: (state: string) => void }) {
+export function StageVideo({ token, publish, camera = true, live, sellerHandle, buyerHandle, onState }: { token: string; publish: boolean; camera?: boolean; live: boolean; sellerHandle: string; buyerHandle: string; onState?: (state: string) => void }) {
   const [sides, setSides] = useState<Record<Role, Side>>({ seller: EMPTY, buyer: EMPTY });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -25,6 +26,12 @@ export function StageVideo({ token, publish, camera = true, sellerHandle, buyerH
   useEffect(() => {
     onStateRef.current = onState;
   });
+  const liveRef = useRef(live);
+  const refresh = useRef(() => {});
+  useEffect(() => {
+    liveRef.current = live;
+    refresh.current();
+  }, [live]);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,8 +60,9 @@ export function StageVideo({ token, publish, camera = true, sellerHandle, buyerH
       const stage = new Stage(token, {
         stageStreamsToPublish: () => localStreams,
         shouldPublishParticipant: () => publish,
-        shouldSubscribeToParticipant: () => SubscribeType.AUDIO_VIDEO,
+        shouldSubscribeToParticipant: () => (liveRef.current ? SubscribeType.AUDIO_VIDEO : SubscribeType.NONE),
       });
+      refresh.current = () => stage.refreshStrategy();
       type Participant = { id: string; isLocal: boolean; attributes: Record<string, unknown> };
       const tracks = new Map<string, { mediaStreamTrack: MediaStreamTrack; isMuted: boolean }[]>();
       let me: Participant | null = null;
@@ -66,9 +74,14 @@ export function StageVideo({ token, publish, camera = true, sellerHandle, buyerH
         const cameras = list.filter((s) => s.mediaStreamTrack.kind === "video").map((s) => s.mediaStreamTrack);
         const video = list.some((s) => s.mediaStreamTrack.kind === "video" && !(participant.isLocal ? localVideo?.isMuted : s.isMuted));
         const audio = list.find((s) => s.mediaStreamTrack.kind === "audio")?.mediaStreamTrack ?? null; // your own mic too, so you see it working
-        const side = { stream: cameras.length ? new MediaStream(cameras) : null, handle: participant.attributes.handle as string, joined: list.length > 0, video, audio, local: participant.isLocal };
+        const side = { stream: cameras.length ? new MediaStream(cameras) : null, handle: participant.attributes.handle as string, joined: tracks.has(participant.id), video, audio, local: participant.isLocal };
         setSides((s) => ({ ...s, [role]: side }));
       };
+      // Shows the other side as joined before the round, while nothing of theirs is subscribed yet.
+      stage.on(StageEvents.STAGE_PARTICIPANT_JOINED, (participant) => {
+        if (!tracks.has(participant.id)) tracks.set(participant.id, []);
+        show(participant);
+      });
       stage.on(StageEvents.STAGE_PARTICIPANT_STREAMS_ADDED, (participant, streams) => {
         tracks.set(participant.id, [...(tracks.get(participant.id) ?? []), ...streams]);
         if (participant.isLocal) me = participant;
@@ -94,6 +107,7 @@ export function StageVideo({ token, publish, camera = true, sellerHandle, buyerH
       });
       stage.on(StageEvents.STAGE_CONNECTION_STATE_CHANGED, (state) => onStateRef.current?.(state));
       leave = () => {
+        refresh.current = () => {};
         stage.leave();
         local?.getTracks().forEach((t) => t.stop());
       };
