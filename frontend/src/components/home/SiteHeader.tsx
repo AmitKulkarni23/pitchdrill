@@ -4,6 +4,7 @@ import { hall } from "@/config/tokens";
 const LINKS = [
   { href: "/#archive", label: "Past rounds" },
   { href: "/#how", label: "How it works" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export function SiteHeader() {
