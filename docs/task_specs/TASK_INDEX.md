@@ -34,7 +34,7 @@ Done before these specs (phase 1): booking core, ticket lookup, slots, CDK stack
 
 ## Operations
 
-- [TASK-022 — Slack alerts, dashboard, US-only website, Contact Us](infra/022-alerts-geo-contact.md) · depends on: none · Slack IDs and the SSM contact address come from the user
+- ~~[TASK-022 — Slack alerts, dashboard, US-only website, Contact Us](infra/022-alerts-geo-contact.md) · depends on: none~~ (done 2026-10-23, plus RUM, booking notifications to Slack, and the security-review fixes)
 
 ## Go Live
 
