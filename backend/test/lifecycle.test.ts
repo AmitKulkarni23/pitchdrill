@@ -170,6 +170,7 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     expect(fake.rooms.has(closed!.chatRoomArn!)).toBe(false);
     expect((await api("POST", `/admin/rounds/${r1}/end`)).body.error.code).toBe("round_not_active");
     expect((await api("POST", `/admin/rounds/${r1}/hide`)).body).toEqual({ hidden: true });
+    expect(fake.hiddenRecordings.has(`prefix/${r1}`)).toBe(true);
     expect((await api("GET", `/rounds/${r1}`)).status).toBe(404);
     expect((await api("GET", "/replays")).body.replays).toHaveLength(0);
   });

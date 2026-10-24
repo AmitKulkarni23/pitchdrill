@@ -9,13 +9,15 @@ import {
   StopCompositionCommand,
 } from "@aws-sdk/client-ivs-realtime";
 import { CreateChatTokenCommand, CreateRoomCommand, DeleteRoomCommand, IvschatClient, SendEventCommand } from "@aws-sdk/client-ivschat";
-import { HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { CloudFrontClient, CreateInvalidationCommand } from "@aws-sdk/client-cloudfront";
+import { HeadObjectCommand, ListObjectsV2Command, PutObjectTaggingCommand, S3Client } from "@aws-sdk/client-s3";
 import { tracer } from "./observability";
 
 // All IVS calls live here so tests can mock.module this file.
 const stages = tracer.captureAWSv3Client(new IVSRealTimeClient({}));
 const chat = tracer.captureAWSv3Client(new IvschatClient({}));
 const s3 = tracer.captureAWSv3Client(new S3Client({}));
+const cdn = tracer.captureAWSv3Client(new CloudFrontClient({}));
 
 const isNotFound = (e: unknown) => (e as Error)?.name === "ResourceNotFoundException";
 /** Deleting something already gone counts as success, so cleanup can be retried. */
@@ -119,4 +121,26 @@ export async function recordingEnded(recordingPrefix: string): Promise<boolean> 
     if ((e as Error).name === "NotFound") return false;
     throw e;
   }
+}
+
+/**
+ * Takes a hidden round's replay off the CDN: tags every object under its prefix hidden=true (the bucket policy then
+ * denies CloudFront those objects) and invalidates cached copies. The recording itself is kept. Safe to repeat.
+ */
+export async function hideRecording(recordingPrefix: string) {
+  const Bucket = process.env.RECORDINGS_BUCKET_ENV;
+  let ContinuationToken: string | undefined;
+  do {
+    const page = await s3.send(new ListObjectsV2Command({ Bucket, Prefix: `${recordingPrefix}/`, ContinuationToken }));
+    await Promise.all(
+      (page.Contents ?? []).map(({ Key }) => s3.send(new PutObjectTaggingCommand({ Bucket, Key, Tagging: { TagSet: [{ Key: "hidden", Value: "true" }] } }))),
+    );
+    ContinuationToken = page.NextContinuationToken;
+  } while (ContinuationToken);
+  await cdn.send(
+    new CreateInvalidationCommand({
+      DistributionId: process.env.RECORDINGS_CDN_ID_ENV,
+      InvalidationBatch: { CallerReference: `hide-${recordingPrefix}-${Date.now()}`, Paths: { Quantity: 1, Items: [`/${recordingPrefix}/*`] } },
+    }),
+  );
 }

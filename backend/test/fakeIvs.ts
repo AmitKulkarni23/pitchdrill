@@ -9,6 +9,7 @@ export const fake = {
   creates: 0,
   failCreateFor: new Set<string>(),
   recordings: new Set<string>(),
+  hiddenRecordings: new Set<string>(),
   reset() {
     this.stages.clear();
     this.rooms.clear();
@@ -17,6 +18,7 @@ export const fake = {
     this.creates = 0;
     this.failCreateFor.clear();
     this.recordings.clear();
+    this.hiddenRecordings.clear();
   },
 };
 
@@ -44,5 +46,6 @@ export function installFakeIvs() {
     chatToken: async (_arn: string, userId: string, _a: unknown, canSend: boolean) => ({ token: `chat:${userId}:${canSend ? "send" : "recv"}` }),
     sendRoundEvent: async (room: string, name: string, attrs: Record<string, string>) => void fake.events.push({ room, name, attrs }),
     recordingEnded: async (prefix: string) => fake.recordings.has(prefix),
+    hideRecording: async (prefix: string) => void fake.hiddenRecordings.add(prefix),
   }));
 }

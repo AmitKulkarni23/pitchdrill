@@ -153,7 +153,7 @@ The visual system is **Study Hall**: a calm, light learning app (online-chess-ar
 - **Tokens**: `frontend/src/config/tokens.ts` (`hall` palette, `panel`, `font`; plain module, safe for server components). Never import tokens from `theme.ts` (a `"use client"` module) in server components: the values arrive as empty client references.
 - **MUI theme**: `frontend/src/config/theme.ts`; components use MUI with `sx` props, no CSS Modules, no Tailwind.
 - **Home components**: `frontend/src/components/home/` (SiteHeader, HomeBoard, PlayPanel, HowItWorks).
-- **Round pages**: `/t/[ticket]` (ticket + participant arena), `/r/[roundId]` (watch, votes, replay, comments); shared pieces in `frontend/src/components/round/` (StageVideo over IVS Real-Time, ChatPanel over IVS Chat, VotePanel, CommentsPanel, ReplayVideo with hls.js). Built functional-first; visual polish still to go through impeccable.
+- **Round pages**: `/t#<ticket>` (ticket + participant arena; the ticket is in the URL fragment so it never reaches servers, logs or analytics; `proxy.ts` redirects old `/t/<ticket>` links), `/r/[roundId]` (watch, votes, replay, comments); shared pieces in `frontend/src/components/round/` (StageVideo over IVS Real-Time, ChatPanel over IVS Chat, VotePanel, CommentsPanel, ReplayVideo with hls.js). Built functional-first; visual polish still to go through impeccable.
 
 ## Architecture
 

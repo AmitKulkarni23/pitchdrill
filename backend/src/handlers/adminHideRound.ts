@@ -3,13 +3,15 @@ import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { db, TABLE } from "../lib/db";
 import { handle, json, UserError } from "../lib/http";
 import { logger } from "../lib/observability";
+import * as ivs from "../lib/ivs";
 import { requireRoundId } from "../lib/validation";
 
-// POST /admin/rounds/{roundId}/hide (IAM): removes a round from the replay feed and its public page. Idempotent.
+// POST /admin/rounds/{roundId}/hide (IAM): removes a round from the replay feed, its public page and the CDN. Idempotent.
 export const handler = handle(async (event) => {
   const roundId = requireRoundId(event);
+  let recordingPrefix: string | undefined;
   try {
-    await db.send(
+    const { Attributes } = await db.send(
       new UpdateCommand({
         TableName: TABLE,
         Key: { PK: `ROUND#${roundId}`, SK: "META" },
@@ -17,12 +19,15 @@ export const handler = handle(async (event) => {
         ExpressionAttributeNames: { "#h": "hidden" },
         ConditionExpression: "attribute_exists(PK)",
         ExpressionAttributeValues: { ":t": true },
+        ReturnValues: "ALL_NEW",
       }),
     );
+    recordingPrefix = Attributes?.recordingPrefix;
   } catch (e) {
     if (e instanceof ConditionalCheckFailedException) throw new UserError(404, "round_not_found", "That round doesn't exist.");
     throw e;
   }
-  logger.info("Round hidden", { roundId });
+  if (recordingPrefix) await ivs.hideRecording(recordingPrefix);
+  logger.info("Round hidden", { roundId, recordingPrefix });
   return json(200, { hidden: true });
 });

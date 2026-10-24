@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Alert, Box, Button, Typography } from "@mui/material";
 import { ChatPanel, type RoundEvent } from "@/components/round/ChatPanel";
 import { BriefList, RoundClock, RoundShell } from "@/components/round/RoundShell";
@@ -18,17 +17,18 @@ const BRIEF_BEFORE = 5 * 60_000;
 const ARENA_BEFORE = 2 * 60_000;
 
 /** Ticket page and participant arena: booking status, then mic + brief + timer for the round. */
-// useParams needs a Suspense boundary with cacheComponents; the page itself is all client-side.
+// The ticket lives in the URL fragment (/t#<ticket>): browsers never send it to servers, so it stays out of request logs,
+// Referer headers and analytics. Old /t/<ticket> links are redirected here by proxy.ts.
+const onHashChange = (cb: () => void) => (window.addEventListener("hashchange", cb), () => window.removeEventListener("hashchange", cb));
+
 export default function Page() {
-  return (
-    <Suspense fallback={null}>
-      <TicketPage />
-    </Suspense>
-  );
+  const ticket = useSyncExternalStore(onHashChange, () => decodeURIComponent(window.location.hash.slice(1)), () => null);
+  if (ticket === null) return null;
+  if (!ticket) return <RoundShell title="Ticket not found"><Alert severity="error">This link is missing its ticket.</Alert></RoundShell>;
+  return <TicketPage key={ticket} ticket={ticket} />;
 }
 
-function TicketPage() {
-  const { ticket } = useParams<{ ticket: string }>();
+function TicketPage({ ticket }: { ticket: string }) {
   const now = useNow();
   const timeZone = useTimeZone();
   const [booking, setBooking] = useState<Booking | null>(null);

@@ -36,7 +36,7 @@ export function PlayPanel({ slotId, timeZone, now }: Props) {
   const [copied, setCopied] = useState(false);
 
   const handleOk = isValidHandle(handle);
-  const link = result ? `${window.location.origin}/t/${result.ticket}` : "";
+  const link = result ? `${window.location.origin}/t#${result.ticket}` : "";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

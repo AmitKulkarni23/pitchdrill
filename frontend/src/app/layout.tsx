@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { CssBaseline, ThemeProvider } from "@mui/material";
-import { Analytics } from "@vercel/analytics/next";
-import { Rum } from "@/components/Rum";
+import { Telemetry } from "@/components/Telemetry";
 import { theme } from "@/config/theme";
 import "./globals.css";
 
@@ -26,8 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </ThemeProvider>
         </AppRouterCacheProvider>
-        <Analytics />
-        <Rum />
+        <Telemetry />
       </body>
     </html>
   );

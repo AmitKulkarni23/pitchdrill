@@ -103,6 +103,18 @@ export class PitchDrillBackendStack extends cdk.Stack {
       }),
     );
 
+    // Hidden rounds' replays: POST /admin/rounds/{id}/hide tags their objects hidden=true, and CloudFront may not read them.
+    recordings.addToResourcePolicy(
+      new iam.PolicyStatement({
+        sid: 'DenyCdnHiddenReplays',
+        effect: iam.Effect.DENY,
+        principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
+        actions: ['s3:GetObject'],
+        resources: [recordings.arnForObjects('*')],
+        conditions: { StringEquals: { 's3:ExistingObjectTag/hidden': 'true' } },
+      }),
+    );
+
     // Replays are served through CloudFront with Origin Access Control; the bucket stays private.
     const replayCors = new cloudfront.ResponseHeadersPolicy(this, 'PitchDrillReplayCorsPolicy', {
       responseHeadersPolicyName: 'pitchdrill-replay-cors',
@@ -198,6 +210,12 @@ export class PitchDrillBackendStack extends cdk.Stack {
     ivsPolicies.chatToken(fns.createChatToken!);
     ivsPolicies.sendEvent(fns.castVote!);
     ivsPolicies.endRound(fns.adminEndRound!);
+    // Hide takes the replay off the CDN: list + tag the recording's objects, then invalidate the cached copies.
+    fns.adminHideRound!.addEnvironment('RECORDINGS_BUCKET_ENV', recordings.bucketName);
+    fns.adminHideRound!.addEnvironment('RECORDINGS_CDN_ID_ENV', cdn.distributionId);
+    allow(fns.adminHideRound!, ['s3:ListBucket'], [recordings.bucketArn]);
+    allow(fns.adminHideRound!, ['s3:PutObjectTagging'], [recordings.arnForObjects('*')]);
+    cdn.grantCreateInvalidation(fns.adminHideRound!);
 
     // Contact form: emails the owner from and to one SES-verified address. The address lives only in SSM
     // (`/pitchdrill/contact-email`, set with the CLI) and is resolved by CloudFormation at deploy, so it is never in Git.
