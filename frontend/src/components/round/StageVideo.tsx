@@ -6,9 +6,9 @@ import { hall } from "@/config/tokens";
 import { reportError } from "@/lib/rum";
 import type { Role } from "@/types/api";
 
-/** `joined`: publishing anything. `video`: an unmuted camera track (mic-only players have none). `audio`: drives the level meter. */
-type Side = { stream: MediaStream | null; handle?: string; joined: boolean; video: boolean; audio: MediaStreamTrack | null };
-const EMPTY: Side = { stream: null, joined: false, video: false, audio: null };
+/** `stream`: camera only. `joined`: publishing anything. `video`: an unmuted camera track (mic-only players have none). `audio`: drives the level meter, and plays unless `local`. */
+type Side = { stream: MediaStream | null; handle?: string; joined: boolean; video: boolean; audio: MediaStreamTrack | null; local: boolean };
+const EMPTY: Side = { stream: null, joined: false, video: false, audio: null, local: false };
 
 /**
  * Seller left, buyer right, over IVS Real-Time. `publish` turns on this browser's mic, plus the camera
@@ -62,11 +62,11 @@ export function StageVideo({ token, publish, camera = true, sellerHandle, buyerH
         const role = participant.attributes.role as Role | undefined;
         if (role !== "seller" && role !== "buyer") return;
         const list = tracks.get(participant.id) ?? [];
-        // Local audio is never played back to yourself; the local camera's mute state is ours, not the event's.
-        const playable = (participant.isLocal ? list.filter((s) => s.mediaStreamTrack.kind === "video") : list).map((s) => s.mediaStreamTrack);
+        // Audio plays through its own <audio> element (Pane), never back to yourself; the local camera's mute state is ours, not the event's.
+        const cameras = list.filter((s) => s.mediaStreamTrack.kind === "video").map((s) => s.mediaStreamTrack);
         const video = list.some((s) => s.mediaStreamTrack.kind === "video" && !(participant.isLocal ? localVideo?.isMuted : s.isMuted));
         const audio = list.find((s) => s.mediaStreamTrack.kind === "audio")?.mediaStreamTrack ?? null; // your own mic too, so you see it working
-        const side = { stream: playable.length ? new MediaStream(playable) : null, handle: participant.attributes.handle as string, joined: list.length > 0, video, audio };
+        const side = { stream: cameras.length ? new MediaStream(cameras) : null, handle: participant.attributes.handle as string, joined: list.length > 0, video, audio, local: participant.isLocal };
         setSides((s) => ({ ...s, [role]: side }));
       };
       stage.on(StageEvents.STAGE_PARTICIPANT_STREAMS_ADDED, (participant, streams) => {
@@ -130,23 +130,29 @@ export function StageVideo({ token, publish, camera = true, sellerHandle, buyerH
 
 function Pane({ side, label, bg }: { side: Side; label: string; bg: string }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const sound = useRef<HTMLAudioElement>(null);
   // Browsers can refuse to play sound without a click on the page (always possible for spectators); offer one.
   const [blocked, setBlocked] = useState(false);
-  const play = () => ref.current?.play().then(() => setBlocked(false), () => setBlocked(true));
+  const play = () => sound.current?.play().then(() => setBlocked(false), () => setBlocked(true));
+  const heard = side.local ? null : side.audio;
   useEffect(() => {
-    if (!ref.current) return;
-    ref.current.srcObject = side.stream;
-    if (side.stream) play();
+    if (ref.current) ref.current.srcObject = side.stream;
   }, [side.stream]);
+  // Keyed on the track, not on every participant event, so playback isn't torn down and restarted mid-sentence.
+  useEffect(() => {
+    if (!sound.current) return;
+    sound.current.srcObject = heard && new MediaStream([heard]);
+    if (heard) play();
+  }, [heard]);
   return (
     <Box sx={{ position: "relative", aspectRatio: "4 / 3", bgcolor: bg, display: "grid", placeItems: "center" }}>
-      {/* The <video> stays mounted without a picture so a mic-only player's audio still plays. */}
+      <audio ref={sound} autoPlay />
       {side.stream && (
-        <Box component="video" ref={ref} autoPlay playsInline data-testid={`video-${label.split(" ")[0]!.toLowerCase()}`} sx={{ gridArea: "1 / 1", width: "100%", height: "100%", objectFit: "cover", opacity: side.video ? 1 : 0 }} />
+        <Box component="video" ref={ref} autoPlay playsInline muted data-testid={`video-${label.split(" ")[0]!.toLowerCase()}`} sx={{ gridArea: "1 / 1", width: "100%", height: "100%", objectFit: "cover", opacity: side.video ? 1 : 0 }} />
       )}
       {!side.video && <Box sx={{ gridArea: "1 / 1", fontSize: 14, fontWeight: 700, color: hall.muted }}>{side.joined ? "Audio only" : "Waiting to join…"}</Box>}
       {side.audio && <LevelMeter track={side.audio} />}
-      {blocked && side.stream && (
+      {blocked && heard && (
         <Button variant="contained" size="small" onClick={play} sx={{ position: "absolute", top: 10, left: 10 }}>
           Turn on sound
         </Button>
