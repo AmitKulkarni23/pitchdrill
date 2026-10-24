@@ -143,6 +143,8 @@ export function PlayPanel({ slotId, timeZone, now }: Props) {
 
             {error && <Alert severity="error">{error}</Alert>}
 
+            <Alert severity="info" sx={{ fontWeight: 600 }}>Rounds are recorded and replayed publicly.</Alert>
+
             <Button type="submit" variant="contained" size="large" disabled={!slotId || submitting} sx={{ py: 1.75, fontSize: 16, fontWeight: 800 }}>
               {submitting ? "Booking…" : slotId ? `Book ${timeLabel(slotId, timeZone)} as ${role}` : "No slots open"}
             </Button>

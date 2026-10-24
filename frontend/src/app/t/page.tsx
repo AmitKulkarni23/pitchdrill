@@ -136,7 +136,7 @@ function TicketPage({ ticket }: { ticket: string }) {
               <StageVideo token={join.stageToken} publish camera={false} sellerHandle={round.sellerHandle} buyerHandle={round.buyerHandle} />
             ) : (
               <Box sx={{ ...panel, p: 3, display: "grid", gap: 1.5 }}>
-                <Typography>Join now so you&apos;re ready. The round is audio only and starts at {timeLabel(round.slotId, timeZone)} once you&apos;re both in. If either of you hasn&apos;t joined by {timeLabel(new Date(start + 60_000).toISOString(), timeZone)}, it&apos;s cancelled.</Typography>
+                <Typography>Join now so you&apos;re ready. The round is audio only and starts at {timeLabel(round.slotId, timeZone)} once you&apos;re both in. If either of you hasn&apos;t joined by {timeLabel(new Date(start + 60_000).toISOString(), timeZone)}, it&apos;s cancelled. <strong>Rounds are recorded and replayed publicly.</strong></Typography>
                 {joinError && <Alert severity="error">{joinError}</Alert>}
                 <Button variant="contained" size="large" onClick={joinRound} sx={{ justifySelf: "start" }}>Join with mic</Button>
               </Box>
