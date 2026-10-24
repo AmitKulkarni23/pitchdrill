@@ -490,13 +490,10 @@ export class PitchDrillBackendStack extends cdk.Stack {
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
 
-    // Every alarm (and its recovery) goes to one SNS topic; AWS Chatbot posts the topic to Slack.
+    // Every alarm goes to one SNS topic; AWS Chatbot posts the topic to Slack. ALARM only: no OK/recovery messages (user, 2026-10-23).
     const alarms = this.node.findAll().filter((c): c is cloudwatch.Alarm => c instanceof cloudwatch.Alarm);
     const alertsTopic = new sns.Topic(this, 'PitchDrillAlertsTopic', { topicName: 'pitchdrill-alerts' });
-    alarms.forEach((alarm) => {
-      alarm.addAlarmAction(new cwActions.SnsAction(alertsTopic));
-      alarm.addOkAction(new cwActions.SnsAction(alertsTopic));
-    });
+    alarms.forEach((alarm) => alarm.addAlarmAction(new cwActions.SnsAction(alertsTopic)));
     if (SLACK_WORKSPACE_ID && SLACK_CHANNEL_ID) {
       new chatbot.SlackChannelConfiguration(this, 'PitchDrillSlackAlerts', {
         slackChannelConfigurationName: 'pitchdrill-alerts',
