@@ -254,7 +254,7 @@ export class PitchDrillBackendStack extends cdk.Stack {
     new scheduler.Schedule(this, 'PitchDrillSlotTickSchedule', {
       scheduleName: 'pitchdrill-slot-tick',
       description: 'Every minute during slot hours (4:00–8:45 PM Pacific slots, with margin either side).',
-      schedule: scheduler.ScheduleExpression.cron({ minute: '*', hour: '8-21' /* ponytail: 8 for the 9 AM test slots, back to '15-21' after */, timeZone: cdk.TimeZone.AMERICA_LOS_ANGELES }),
+      schedule: scheduler.ScheduleExpression.cron({ minute: '*', hour: '15-21', timeZone: cdk.TimeZone.AMERICA_LOS_ANGELES }),
       target: new targets.LambdaInvoke(slotTick, { retryAttempts: 0 }),
     });
 
