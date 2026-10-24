@@ -35,7 +35,7 @@ const OPENROUTER_MODEL = 'anthropic/claude-haiku-5.5';
 // Chatbot console (an OAuth click; there is no API for it). Until both IDs are set, alarms only go to the SNS topic.
 const SLACK_WORKSPACE_ID = 'T09F859DKKN'; // WillItWork
 const SLACK_CHANNEL_ID = 'C0CBN0HLGJ1'; // #pitchdrill-alerts
-const SLACK_BOOKINGS_CHANNEL_ID = ''; // #pitchdrill-bookings: one message per booking
+const SLACK_BOOKINGS_CHANNEL_ID = 'C0CBV9KDP1P'; // #pitchdrill-bookings: one message per booking
 
 const pascal = (name: string) => `${name[0]!.toUpperCase()}${name.slice(1)}`;
 
