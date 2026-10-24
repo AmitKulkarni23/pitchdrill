@@ -9,7 +9,7 @@
 - **Rounds**: All rounds in a slot run in parallel, one stage each; spectators pick which to watch.
 - **Audience**: Watch live + replay. Votes and comments on both.
 - **Voting**: Anyone, one vote per browser per round ("Sold" / "Not sold").
-- **Briefs**: LLM-generated. Seller gets a product sheet; buyer gets a hidden persona. Revealed 5 minutes before the round; the arena opens 2 minutes before.
+- **Briefs**: LLM-generated. Seller gets a product sheet; buyer gets a hidden persona. Revealed 5 minutes before the round; the arena opens 2 minutes before and players can join from 1 minute before.
 - **Round length**: 2 minutes, enforced server-side.
 - **Coming back**: no email. After booking: copy the ticket link or "Add to calendar" (`.ics` with the link and a 15-minute reminder).
 - **Spectator names**: a nickname typed once (saved in the browser) for chat and comments.

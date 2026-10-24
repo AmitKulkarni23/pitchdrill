@@ -14,7 +14,8 @@ import { addPlayedRound, addTicket } from "@/lib/storage";
 import type { Booking, BriefResponse, JoinResponse } from "@/types/api";
 
 const BRIEF_BEFORE = 5 * 60_000;
-const ARENA_BEFORE = 2 * 60_000;
+// The stage opens on the tick at T-2m (~24 s past the minute, so ready by ~T-1:36); the button follows the clock, not the tick.
+const JOIN_BEFORE = 60_000;
 
 /** Ticket page and participant arena: booking status, then mic + brief + timer for the round. */
 // The ticket lives in the URL fragment (/t#<ticket>): browsers never send it to servers, so it stays out of request logs,
@@ -105,6 +106,7 @@ function TicketPage({ ticket }: { ticket: string }) {
   if (!round) return <RoundShell title="Loading your round…" subtitle={subtitle}><Box sx={{ ...panel, height: 240 }} /></RoundShell>;
 
   const arenaOpen = round.status === "ready" || round.status === "live";
+  const joinOpen = arenaOpen && now >= start - JOIN_BEFORE;
   const briefOpen = arenaOpen || (round.status === "paired" && now >= start - BRIEF_BEFORE);
   const finished = round.status === "ended" || round.status === "closed";
   return (
@@ -112,7 +114,7 @@ function TicketPage({ ticket }: { ticket: string }) {
       <RoundClock round={round} now={now} />
       {round.status === "paired" && !briefOpen && (
         <Box sx={{ ...panel, p: 3 }}>
-          <Typography>Your brief appears here 5 minutes before the start (in {countdown(start - BRIEF_BEFORE - now)}), and you can join the round 2 minutes before. Keep this page open; it updates on its own.</Typography>
+          <Typography>Your brief appears here 5 minutes before the start (in {countdown(start - BRIEF_BEFORE - now)}), and you can join the round 1 minute before. Keep this page open; it updates on its own.</Typography>
         </Box>
       )}
       {round.status === "cancelled" && <Alert severity="info">{round.cancelReason === "no_show" ? "Both players have to join when the round starts. Book another slot to try again." : "A moderator ended this round."}</Alert>}
@@ -125,11 +127,11 @@ function TicketPage({ ticket }: { ticket: string }) {
       {briefOpen && (
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr" }, gap: 2.5, alignItems: "start" }}>
           <Box sx={{ display: "grid", gap: 2 }}>
-            {!arenaOpen ? (
+            {!joinOpen ? (
               <Box sx={{ ...panel, p: 3, display: "grid", gap: 1.5 }}>
-                <Typography>Read your brief while you wait. Joining opens 2 minutes before the start.</Typography>
+                <Typography>Read your brief while you wait. Joining opens 1 minute before the start.</Typography>
                 <Button variant="contained" size="large" disabled sx={{ justifySelf: "start" }}>
-                  Join with mic in {countdown(Math.max(0, start - ARENA_BEFORE - now))}
+                  Join with mic in {countdown(Math.max(0, start - JOIN_BEFORE - now))}
                 </Button>
               </Box>
             ) : join ? (
