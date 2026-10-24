@@ -28,6 +28,7 @@ export const routes: Route[] = [
   { method: "GET", path: "/rounds/{roundId}/comments", handler: "listComments", auth: "public", throttle: READ },
   { method: "POST", path: "/rounds/{roundId}/comments", handler: "createComment", auth: "public", throttle: WRITE },
   { method: "POST", path: "/rounds/{roundId}/reports", handler: "createReport", auth: "public", throttle: { rateLimit: 5, burstLimit: 10 } },
+  { method: "POST", path: "/contact", handler: "createContact", auth: "public", throttle: { rateLimit: 1, burstLimit: 5 } },
   { method: "GET", path: "/admin/reports", handler: "adminListReports", auth: "iam" },
   { method: "POST", path: "/admin/rounds/{roundId}/end", handler: "adminEndRound", auth: "iam" },
   { method: "POST", path: "/admin/rounds/{roundId}/hide", handler: "adminHideRound", auth: "iam" },

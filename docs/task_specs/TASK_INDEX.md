@@ -32,6 +32,10 @@ Done before these specs (phase 1): booking core, ticket lookup, slots, CDK stack
 - ~~[TASK-019 — Replay page, comments, reports and replay feed](frontend/019-replays.md) · depends on: 012, 013, 018 · the feed is the home "Past rounds" list from the approved mockup~~ (functional build, 2026-10-15; design polish pending)
 - ~~[TASK-020 — Vercel deployment](frontend/020-vercel-deploy.md) · depends on: 014~~
 
+## Operations
+
+- [TASK-022 — Slack alerts, dashboard, US-only website, Contact Us](infra/022-alerts-geo-contact.md) · depends on: none · Slack IDs and the SSM contact address come from the user
+
 ## Go Live
 
 - [TASK-021 — Open the API to the public](infra/021-unlock-public-api.md) · depends on: 013, 019, 020 · **requires user approval** · public routes already opened for localhost (2026-10-15, user-approved); remaining: add the Vercel origin to `ALLOWED_ORIGINS` and the production smoke test

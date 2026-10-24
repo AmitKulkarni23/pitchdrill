@@ -8,6 +8,8 @@ import { AccessLogFormat } from 'aws-cdk-lib/aws-apigateway';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as chatbot from 'aws-cdk-lib/aws-chatbot';
+import * as cwActions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ivs from 'aws-cdk-lib/aws-ivs';
@@ -18,12 +20,20 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as scheduler from 'aws-cdk-lib/aws-scheduler';
 import * as targets from 'aws-cdk-lib/aws-scheduler-targets';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import * as ses from 'aws-cdk-lib/aws-ses';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { routes } from '../../backend/src/routes';
 
 // Browser origins allowed to call the API and fetch replays. Add the Vercel domain once the frontend is live.
 const ALLOWED_ORIGINS = ['http://localhost:3000', 'https://pitchdrill-azure.vercel.app'];
 // OpenRouter model for briefs (chosen by the user, 2026-10-15).
 const OPENROUTER_MODEL = 'anthropic/claude-haiku-5.5';
+
+// Slack channel for alarm notifications via AWS Chatbot. The workspace must first be authorized once in the
+// Chatbot console (an OAuth click; there is no API for it). Until both IDs are set, alarms only go to the SNS topic.
+const SLACK_WORKSPACE_ID = '';
+const SLACK_CHANNEL_ID = '';
 
 const pascal = (name: string) => `${name[0]!.toUpperCase()}${name.slice(1)}`;
 
@@ -187,6 +197,14 @@ export class PitchDrillBackendStack extends cdk.Stack {
     ivsPolicies.chatToken(fns.createChatToken!);
     ivsPolicies.sendEvent(fns.castVote!);
     ivsPolicies.endRound(fns.adminEndRound!);
+
+    // Contact form: emails the owner from and to one SES-verified address. The address lives only in SSM
+    // (`/pitchdrill/contact-email`, set with the CLI) and is resolved by CloudFormation at deploy, so it is never in Git.
+    // SES emails that address a verification link on first deploy; sending works once it is clicked (sandbox is fine).
+    const contactEmail = ssm.StringParameter.valueForStringParameter(this, '/pitchdrill/contact-email');
+    const contactIdentity = new ses.EmailIdentity(this, 'PitchDrillContactEmailIdentity', { identity: ses.Identity.email(contactEmail) });
+    contactIdentity.grantSendEmail(fns.createContact!);
+    fns.createContact!.addEnvironment('CONTACT_EMAIL_ENV', contactEmail);
 
     // SlotTick drives every round through its lifecycle (docs/system_specs/architecture.md §4).
     // ponytail: no reserved concurrency (account limit is 10); overlapping ticks are safe because every transition is conditional.
@@ -385,6 +403,47 @@ export class PitchDrillBackendStack extends cdk.Stack {
       evaluationPeriods: 1,
       comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // Every alarm (and its recovery) goes to one SNS topic; AWS Chatbot posts the topic to Slack.
+    const alarms = this.node.findAll().filter((c): c is cloudwatch.Alarm => c instanceof cloudwatch.Alarm);
+    const alertsTopic = new sns.Topic(this, 'PitchDrillAlertsTopic', { topicName: 'pitchdrill-alerts' });
+    alarms.forEach((alarm) => {
+      alarm.addAlarmAction(new cwActions.SnsAction(alertsTopic));
+      alarm.addOkAction(new cwActions.SnsAction(alertsTopic));
+    });
+    if (SLACK_WORKSPACE_ID && SLACK_CHANNEL_ID) {
+      new chatbot.SlackChannelConfiguration(this, 'PitchDrillSlackAlerts', {
+        slackChannelConfigurationName: 'pitchdrill-alerts',
+        slackWorkspaceId: SLACK_WORKSPACE_ID,
+        slackChannelId: SLACK_CHANNEL_ID,
+        notificationTopics: [alertsTopic],
+        // Notifications only: anyone in the channel can at most read CloudWatch, never change anything.
+        guardrailPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchReadOnlyAccess')],
+        logRetention: logs.RetentionDays.ONE_MONTH,
+      });
+    }
+
+    // One dashboard (CloudWatch's first 3 are free, up to 50 metrics each).
+    const business = (metricName: string) =>
+      new cloudwatch.Metric({ namespace: 'PitchDrill', metricName, dimensionsMap: { service: 'pitchdrill' }, statistic: 'Sum', period: cdk.Duration.minutes(15) });
+    const graph = (title: string, left: cloudwatch.IMetric[], width = 8) => new cloudwatch.GraphWidget({ title, left, width, height: 6 });
+    new cloudwatch.Dashboard(this, 'PitchDrillDashboard', {
+      dashboardName: 'pitchdrill',
+      defaultInterval: cdk.Duration.days(1),
+      widgets: [
+        [
+          graph('Bookings and rounds (per 15 min)', ['BookingCreated', 'RoundPaired', 'RoundStarted', 'RoundCancelled'].map(business)),
+          graph('Briefs (per 15 min)', ['BriefGenerated', 'BriefGenerationFailed', 'BriefFallbackUsed'].map(business)),
+          graph('Votes, contact, recordings (per 15 min)', ['VoteCast', 'ContactSent', 'RecordingMissing'].map(business)),
+        ],
+        [
+          graph('API requests and errors', [api.metricCount(), api.metricClientError(), api.metricServerError()].map((m) => m.with({ statistic: 'Sum', period: cdk.Duration.minutes(5) }))),
+          graph('API latency (ms)', ['p50', 'p99'].map((statistic) => api.metricLatency({ statistic, period: cdk.Duration.minutes(5) }))),
+          new cloudwatch.AlarmStatusWidget({ title: 'Alarms', alarms, width: 8, height: 6 }),
+        ],
+        [graph('Lambda errors', [...Object.values(fns), slotTick, generateBriefs].map((fn) => fn.metricErrors({ label: fn.node.id, period: cdk.Duration.minutes(5) })), 24)],
+      ],
     });
 
     // ======================

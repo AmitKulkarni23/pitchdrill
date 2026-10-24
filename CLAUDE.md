@@ -128,6 +128,10 @@ curl --aws-sigv4 "aws:amz:us-west-2:execute-api" --user "$AWS_ACCESS_KEY_ID:$AWS
 
 OpenRouter key (set by the user, never in chat or Git): `aws secretsmanager put-secret-value --region us-west-2 --secret-id pitchdrill/openrouter-api-key --secret-string '<key>'`. Without it, rounds get canned briefs from `backend/src/lib/fallbackBriefs.ts`.
 
+Contact-form address (set by the user before the first deploy that includes it, never in Git): `aws ssm put-parameter --region us-west-2 --name /pitchdrill/contact-email --type String --value '<email>'`. SES emails it a verification link on deploy; the form sends once it's clicked. Locally, export `CONTACT_EMAIL_ENV` before `bun run dev` to send real mail.
+
+Slack alerts: authorize the Slack workspace once in the AWS Chatbot console (no API for it), then set `SLACK_WORKSPACE_ID` and `SLACK_CHANNEL_ID` in `infra/lib/backend-stack.ts`. Until then alarms only reach SNS `pitchdrill-alerts`. CloudWatch dashboard: `pitchdrill`.
+
 A failed *first* create strands the retained `pitchdrill-main` table; delete it (deletion protection off first) before redeploying.
 
 ### Vercel

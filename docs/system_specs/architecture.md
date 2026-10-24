@@ -43,6 +43,7 @@ flowchart TB
     DDB[(DynamoDB<br/>pitchdrill-main<br/>+ GSI1 + stream)]
     S3[(S3<br/>pitchdrill-recordings)]
     SM[Secrets Manager<br/>OpenRouter key]
+    SSM[SSM Parameter<br/>/pitchdrill/contact-email]
   end
   subgraph Live[Amazon IVS]
     STAGE[Real-Time stage<br/>one per round]
@@ -61,9 +62,12 @@ flowchart TB
   BRIEF --> DDB
   COMP --> S3
   CFD[CloudFront + OAC] --> S3
-  LOGS[CloudWatch Logs / Metrics / Alarms<br/>X-Ray traces]
+  LOGS[CloudWatch Logs / Metrics / Alarms<br/>dashboard, X-Ray traces]
   Compute -.-> LOGS
   APIGW -.-> LOGS
+  LOGS -- alarm / OK --> SNS[SNS pitchdrill-alerts] --> CB[AWS Chatbot] --> Slack[(Slack channel)]
+  H -- contact form --> SES[SES] --> Owner[(Owner inbox)]
+  SSM -. resolved at deploy .-> SES
 ```
 
 All of it is one CDK stack, `PitchDrillBackendStack` (`infra/lib/backend-stack.ts`), production only.
@@ -140,6 +144,7 @@ All responses are JSON. Errors are `{ error: { code, message } }` with a user-sa
 | `GET /rounds/{roundId}/comments` | public | Replay comments, oldest first, paginated | 012 |
 | `POST /rounds/{roundId}/comments` | public | `{ voterId, nickname, text }` | 012 |
 | `POST /rounds/{roundId}/reports` | public | `{ voterId, reason }` | 013 |
+| `POST /contact` | public | `{ name, email, message, website }` → emails the owner via SES (Reply-To the sender; `website` is a honeypot) | 022 |
 | `GET /admin/reports` | IAM | Recent reports | 013 |
 | `POST /admin/rounds/{roundId}/end` | IAM | End a live round now | 013 |
 | `POST /admin/rounds/{roundId}/hide` | IAM | Hide a replay (feed + round page) | 013 |
@@ -199,9 +204,14 @@ sequenceDiagram
 - No AWS credentials in the frontend. OpenRouter key only in Secrets Manager, read by `GenerateBriefs` and `SlotTick`.
 - User text (handles, nicknames, comments, report reasons) is length-limited and validated server-side; React escapes it on render.
 - Replays of hidden rounds are not listed and `GET /rounds/{id}` returns 404 for them.
+- US only (website): `frontend/src/proxy.ts` rewrites visitors whose `x-vercel-ip-country` isn't `US` to `/coming-soon`. The API is not geo-blocked (HTTP APIs have no WAF; that would need CloudFront in front).
+- The contact address is never in Git: it lives in SSM `/pitchdrill/contact-email` and CloudFormation resolves it at deploy into the SES identity and `CONTACT_EMAIL_ENV`.
 
 ## 9. Observability
 
 - Every handler goes through `handle()` in `backend/src/lib/http.ts` (request-ID logging, `{ error }` responses, metrics flush). Non-HTTP Lambdas (`SlotTick`, `GenerateBriefs`) call `logger.addContext` and `metrics.publishStoredMetrics` themselves.
-- Metrics (namespace `PitchDrill`): `BookingCreated`, `RoundPaired`, `RoundStarted`, `RoundCancelled`, `BriefGenerated`, `BriefFallbackUsed`, `VoteCast`.
+- Metrics (namespace `PitchDrill`): `BookingCreated`, `RoundPaired`, `RoundStarted`, `RoundCancelled`, `BriefGenerated`, `BriefGenerationFailed`, `BriefFallbackUsed`, `RecordingMissing`, `VoteCast`, `ContactSent`.
 - Alarms (named by user impact): users cannot see schedule / book / open tickets / getting server errors (phase 1); rounds not starting (`SlotTick` errors), briefs failing (`BriefFallbackUsed`), cannot join rounds, cannot vote.
+- Every alarm's ALARM and OK transitions go to SNS `pitchdrill-alerts`; AWS Chatbot posts the topic to Slack (`SLACK_WORKSPACE_ID` / `SLACK_CHANNEL_ID` in the stack; the workspace is authorized once in the Chatbot console, the only step CDK can't do). Chatbot's guardrail is `CloudWatchReadOnlyAccess`.
+- CloudWatch dashboard `pitchdrill`: business metrics, API requests / 4xx / 5xx / latency, alarm status, Lambda errors.
+- Frontend page views: Vercel Web Analytics (`<Analytics />` in the root layout).
