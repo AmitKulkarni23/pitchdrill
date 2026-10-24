@@ -32,8 +32,8 @@ const OPENROUTER_MODEL = 'anthropic/claude-haiku-5.5';
 
 // Slack channel for alarm notifications via AWS Chatbot. The workspace must first be authorized once in the
 // Chatbot console (an OAuth click; there is no API for it). Until both IDs are set, alarms only go to the SNS topic.
-const SLACK_WORKSPACE_ID = '';
-const SLACK_CHANNEL_ID = '';
+const SLACK_WORKSPACE_ID = 'T09F859DKKN'; // WillItWork
+const SLACK_CHANNEL_ID = 'C0CBN0HLGJ1';
 
 const pascal = (name: string) => `${name[0]!.toUpperCase()}${name.slice(1)}`;
 
@@ -420,7 +420,6 @@ export class PitchDrillBackendStack extends cdk.Stack {
         notificationTopics: [alertsTopic],
         // Notifications only: anyone in the channel can at most read CloudWatch, never change anything.
         guardrailPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchReadOnlyAccess')],
-        logRetention: logs.RetentionDays.ONE_MONTH,
       });
     }
 
