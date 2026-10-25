@@ -9,6 +9,7 @@ import { addTicket, getHandle, setHandle as saveHandle } from "@/lib/storage";
 import { isValidHandle } from "@/lib/validation";
 import { hall, panel } from "@/config/tokens";
 import type { CreateBookingResponse, Role } from "@/types/api";
+import { YourRounds } from "./YourRounds";
 
 const noop = () => () => {};
 
@@ -77,6 +78,8 @@ export function PlayPanel({ slotId, timeZone, now }: Props) {
       <Typography id="play-h" variant="h2">
         Play
       </Typography>
+
+      <YourRounds now={now} timeZone={timeZone} refreshKey={result?.ticket} />
 
       {!result && (
         <>
@@ -174,24 +177,32 @@ export function PlayPanel({ slotId, timeZone, now }: Props) {
             </Box>
             <TextField id="ticket-link" value={link} fullWidth slotProps={{ htmlInput: { readOnly: true, style: { fontSize: 14 } } }} />
           </Box>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button variant="contained" onClick={copy} sx={{ flex: 1 }}>
-              {copied ? "Copied" : "Copy link"}
-            </Button>
+          <Box sx={{ display: "grid", gap: 1 }}>
             <Button
-              variant="outlined"
-              sx={{ flex: 1 }}
+              variant="contained"
+              size="large"
               onClick={() =>
                 downloadIcs(
                   `pitchdrill-${new Intl.DateTimeFormat("en-CA", { timeZone }).format(Date.parse(result.booking.slotId))}-${timeLabel(result.booking.slotId, timeZone).replace(/\W+/g, "")}.ics`,
                   buildIcs({ slotId: result.booking.slotId, role: result.booking.role, link }),
                 )
               }
+              sx={{ py: 1.5, fontWeight: 800 }}
             >
               Add to calendar
             </Button>
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 1 }}>
+              <Button variant="outlined" onClick={copy}>
+                {copied ? "Copied" : "Copy link"}
+              </Button>
+              <Button variant="outlined" href={link}>
+                Open round
+              </Button>
+            </Box>
+            <Typography variant="body2" sx={{ color: hall.muted }}>
+              The calendar event has your link and a reminder 15 minutes before. This browser also keeps it under Your rounds above. Keep the link private: anyone with it can take your place.
+            </Typography>
           </Box>
-          <Alert severity="warning">This link is the only way back to your seat. Keep it private: anyone with it can take your place.</Alert>
           <Button onClick={bookAnother} sx={{ justifySelf: "start", px: 0, "&:hover": { bgcolor: "transparent", textDecoration: "underline" } }}>
             Book another seat
           </Button>

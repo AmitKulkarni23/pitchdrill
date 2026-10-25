@@ -63,3 +63,8 @@ export function addTicket(ticket: string): void {
   const tickets = getTickets();
   if (!tickets.includes(ticket)) write(KEYS.tickets, JSON.stringify([...tickets, ticket]));
 }
+
+/** Forgets a ticket that no longer leads anywhere (round over, or the booking is gone). */
+export function removeTicket(ticket: string): void {
+  write(KEYS.tickets, JSON.stringify(getTickets().filter((t) => t !== ticket)));
+}
