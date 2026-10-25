@@ -52,6 +52,8 @@ export interface PublicRound {
   /** Seller sheet from live on; buyer persona only after the buzzer. Bullet points (a single string on older rounds). */
   briefs?: { seller: BriefPoints; buyer?: BriefPoints };
   replayUrl?: string;
+  /** Speaking level per side on the replay's timeline: one digit 0–9 per 100 ms ("" if that side wasn't recorded). */
+  voiceLevels?: { seller: string; buyer: string };
 }
 
 export interface ChatToken {

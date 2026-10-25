@@ -63,7 +63,7 @@ function WatchPage() {
           {liveish && (token ? <StageVideo token={token} publish={false} live={round.status === "live" && now < Date.parse(round.endsAt!)} sellerHandle={round.sellerHandle} buyerHandle={round.buyerHandle} /> : watchError && <Alert severity="error">{watchError}</Alert>)}
           {(round.status === "ended" || round.status === "closed") &&
             (round.replayUrl ? (
-              <ReplayVideo src={round.replayUrl} />
+              <ReplayVideo src={round.replayUrl} round={round} />
             ) : (
               <Box sx={{ ...panel, p: 3, color: hall.muted }}>The replay is processing and will appear here in a few minutes.</Box>
             ))}

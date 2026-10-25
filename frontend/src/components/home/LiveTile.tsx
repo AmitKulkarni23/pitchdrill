@@ -6,14 +6,16 @@ import type { PublicRound } from "@/types/api";
 const initials = (handle: string) => handle.slice(0, 2).toUpperCase();
 
 const pill = { position: "absolute", px: 1, py: 0.5, borderRadius: 999, fontSize: 13, fontWeight: 700, lineHeight: 1.2 } as const;
-const nameTag = { position: "absolute", bottom: 10, px: 1, py: 0.5, borderRadius: "6px", bgcolor: "rgba(255,255,255,0.94)", fontSize: 12, fontWeight: 600 } as const;
+export const nameTag = { position: "absolute", bottom: 10, px: 1, py: 0.5, borderRadius: "6px", bgcolor: "rgba(255,255,255,0.94)", fontSize: 12, fontWeight: 600 } as const;
 
-function Side({ handle, bg, ink }: { handle: string; bg: string; ink: string }) {
+/** One player's half of a split frame: their initials on their side's color (also the replay's picture, rounds are audio only). */
+export function Side({ handle, bg, ink, children }: { handle: string; bg: string; ink: string; children?: React.ReactNode }) {
   return (
-    <Box sx={{ bgcolor: bg, display: "grid", placeItems: "center" }}>
+    <Box sx={{ position: "relative", bgcolor: bg, display: "grid", placeItems: "center" }}>
       <Box aria-hidden sx={{ width: { xs: 48, sm: 56 }, height: { xs: 48, sm: 56 }, borderRadius: "50%", bgcolor: "#fff", color: ink, display: "grid", placeItems: "center", fontWeight: 800 }}>
         {initials(handle)}
       </Box>
+      {children}
     </Box>
   );
 }
