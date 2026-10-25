@@ -5,12 +5,13 @@ import {
   GetStageCommand,
   IVSRealTimeClient,
   ListParticipantsCommand,
+  ListStageSessionsCommand,
   StartCompositionCommand,
   StopCompositionCommand,
 } from "@aws-sdk/client-ivs-realtime";
 import { CreateChatTokenCommand, CreateRoomCommand, DeleteRoomCommand, IvschatClient, SendEventCommand } from "@aws-sdk/client-ivschat";
 import { CloudFrontClient, CreateInvalidationCommand } from "@aws-sdk/client-cloudfront";
-import { HeadObjectCommand, ListObjectsV2Command, PutObjectTaggingCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectsCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectTaggingCommand, S3Client } from "@aws-sdk/client-s3";
 import { tracer } from "./observability";
 
 // All IVS calls live here so tests can mock.module this file.
@@ -26,7 +27,22 @@ const ignoreNotFound = (e: unknown) => {
 };
 
 export async function createStage(roundId: string): Promise<string> {
-  const { stage } = await stages.send(new CreateStageCommand({ name: `pitchdrill-${roundId}`, tags: { round: roundId } }));
+  const { stage } = await stages.send(
+    new CreateStageCommand({
+      name: `pitchdrill-${roundId}`,
+      tags: { round: roundId },
+      // Each player's audio on its own, only to measure who speaks when for the replay (voices.ts); deleted after.
+      // The reconnect window keeps a dropped-and-rejoined player in one recording. Off locally (no storage configuration).
+      ...(process.env.STORAGE_CONFIGURATION_ARN_ENV && {
+        autoParticipantRecordingConfiguration: {
+          storageConfigurationArn: process.env.STORAGE_CONFIGURATION_ARN_ENV,
+          mediaTypes: ["AUDIO_ONLY"],
+          thumbnailConfiguration: { recordingMode: "DISABLED" },
+          recordingReconnectWindowSeconds: 10,
+        },
+      }),
+    }),
+  );
   return stage!.arn!;
 }
 export const deleteStage = (arn: string) => stages.send(new DeleteStageCommand({ arn })).then(() => {}, ignoreNotFound);
@@ -47,6 +63,23 @@ export async function publishingUserIds(stageArn: string): Promise<string[]> {
     new ListParticipantsCommand({ stageArn, sessionId, filterByState: "CONNECTED", maxResults: 100 }),
   );
   return (participants ?? []).filter((p) => p.published).map((p) => p.userId ?? "");
+}
+
+/**
+ * S3 prefixes of each user's individual recordings on a stage, across all its sessions (rejoins can add more).
+ * IVS writes them under `<stageId>/<sessionId>/<participantId>/<timestamp>/`.
+ */
+export async function participantRecordingPrefixes<K extends string>(stageArn: string, userIds: Record<K, string>): Promise<Record<K, string[]>> {
+  const stageId = stageArn.split("/").pop();
+  const { stageSessions = [] } = await stages.send(new ListStageSessionsCommand({ stageArn, maxResults: 50 }));
+  const out = {} as Record<K, string[]>;
+  for (const [key, userId] of Object.entries(userIds) as [K, string][]) {
+    const lists = await Promise.all(
+      stageSessions.map(({ sessionId }) => stages.send(new ListParticipantsCommand({ stageArn, sessionId, filterByUserId: userId, maxResults: 100 }))),
+    );
+    out[key] = lists.flatMap((l, i) => (l.participants ?? []).map((p) => `${stageId}/${stageSessions[i]!.sessionId}/${p.participantId}`));
+  }
+  return out;
 }
 
 /** Polls every 2 s until every one of `userIds` is publishing or `until` (epoch ms) passes; returns who is publishing. */
@@ -143,4 +176,30 @@ export async function hideRecording(recordingPrefix: string) {
       InvalidationBatch: { CallerReference: `hide-${recordingPrefix}-${Date.now()}`, Paths: { Quantity: 1, Items: [`/${recordingPrefix}/*`] } },
     }),
   );
+}
+
+const Bucket = () => process.env.RECORDINGS_BUCKET_ENV;
+
+/** Every object key under `prefix/`. */
+export async function listKeys(prefix: string): Promise<string[]> {
+  const keys: string[] = [];
+  let ContinuationToken: string | undefined;
+  do {
+    const page = await s3.send(new ListObjectsV2Command({ Bucket: Bucket(), Prefix: `${prefix}/`, ContinuationToken }));
+    keys.push(...(page.Contents ?? []).map((o) => o.Key!));
+    ContinuationToken = page.NextContinuationToken;
+  } while (ContinuationToken);
+  return keys;
+}
+
+export async function getObject(Key: string): Promise<Uint8Array> {
+  const { Body } = await s3.send(new GetObjectCommand({ Bucket: Bucket(), Key }));
+  return Body!.transformToByteArray();
+}
+
+/** Deletes every object under `prefix/`. */
+export async function deletePrefix(prefix: string) {
+  const keys = await listKeys(prefix);
+  for (let i = 0; i < keys.length; i += 1000)
+    await s3.send(new DeleteObjectsCommand({ Bucket: Bucket(), Delete: { Objects: keys.slice(i, i + 1000).map((Key) => ({ Key })), Quiet: true } }));
 }

@@ -1,3 +1,4 @@
+import { execSync } from 'child_process';
 import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
@@ -191,7 +192,7 @@ export class PitchDrillBackendStack extends cdk.Stack {
       sendEvent: (fn: lambda.IFunction) => allow(fn, ['ivschat:SendEvent'], [roomArn]),
       endRound: (fn: lambda.IFunction) => {
         allow(fn, ['ivs:StopComposition'], [ivsArn('composition')]);
-        allow(fn, ['ivs:DeleteStage'], [ivsArn('stage')]);
+        allow(fn, ['ivs:DeleteStage', 'ivs:ListStageSessions', 'ivs:ListParticipants'], [ivsArn('stage')]);
         allow(fn, ['ivschat:SendEvent', 'ivschat:DeleteRoom'], [roomArn]);
       },
     };
@@ -247,7 +248,32 @@ export class PitchDrillBackendStack extends cdk.Stack {
     table.grantReadWriteData(slotTick);
     openRouterSecret.grantRead(slotTick);
     recordings.grantRead(slotTick);
-    allow(slotTick, ['ivs:CreateStage', 'ivs:DeleteStage', 'ivs:GetStage', 'ivs:ListParticipants', 'ivs:TagResource'], [ivsArn('stage')]);
+    recordings.grantDelete(slotTick); // individual recordings, once measured (backend/src/lib/voices.ts)
+    allow(slotTick, ['ivs:CreateStage', 'ivs:DeleteStage', 'ivs:GetStage', 'ivs:ListParticipants', 'ivs:ListStageSessions', 'ivs:TagResource'], [ivsArn('stage'), storage.attrArn]);
+    // ffmpeg decodes each player's recording into the replay's speaking meters. Static arm64 build from ffmpeg-static's
+    // pinned release, checked against its SHA-256; cached in cdk.out by the fixed asset hash.
+    const FFMPEG_URL = 'https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-linux-arm64.gz';
+    const FFMPEG_SHA256 = '2b708b2d15041d2a192c1db24c7a8a1d24f645a8242dce1c744ff2392b86ada1';
+    const fetchFfmpeg = `mkdir -p bin && curl -fsSL ${FFMPEG_URL} -o ffmpeg.gz && echo "${FFMPEG_SHA256}  ffmpeg.gz" | sha256sum -c - && gunzip -c ffmpeg.gz > bin/ffmpeg && rm ffmpeg.gz && chmod 755 bin/ffmpeg`;
+    slotTick.addLayers(
+      new lambda.LayerVersion(this, 'PitchDrillFfmpegLayer', {
+        description: 'ffmpeg 6.0 static, linux arm64 (/opt/bin/ffmpeg)',
+        compatibleArchitectures: [lambda.Architecture.ARM_64],
+        code: lambda.Code.fromAsset(__dirname, {
+          assetHash: FFMPEG_SHA256,
+          bundling: {
+            image: cdk.DockerImage.fromRegistry('alpine:3.20'),
+            command: ['sh', '-c', `apk add -q curl coreutils && cd /asset-output && ${fetchFfmpeg}`],
+            local: {
+              tryBundle(outputDir) {
+                execSync(fetchFfmpeg.replace('sha256sum -c', 'shasum -a 256 -c'), { cwd: outputDir, stdio: 'inherit' });
+                return true;
+              },
+            },
+          },
+        }),
+      }),
+    );
     allow(slotTick, ['ivs:StartComposition', 'ivs:StopComposition', 'ivs:TagResource'], [ivsArn('composition'), ivsArn('stage'), encoder.attrArn, storage.attrArn]);
     allow(slotTick, ['ivschat:CreateRoom', 'ivschat:DeleteRoom', 'ivschat:SendEvent', 'ivschat:TagResource'], [roomArn]);
 

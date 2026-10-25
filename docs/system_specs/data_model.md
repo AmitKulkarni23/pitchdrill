@@ -61,6 +61,8 @@ erDiagram
 | `briefs?` | map `{ product: { name, price, tagline }, seller: string[], buyer: string[], source: "openrouter"\|"fallback" }` (bullet points; rounds before 2026-10-18 hold one string each) | set by `GenerateBriefs` / `SlotTick`; never returned whole to clients |
 | `votesSold`, `votesNotSold` | number | `ADD` on each vote |
 | `recordingPath?` | string | `<recordingPrefix>/media/hls/multivariant.m3u8`, served at `https://<cdn>/<recordingPath>` |
+| `voicePrefixes?` | map `{ seller: string[], buyer: string[] }` | individual-recording S3 prefixes (`<stageId>/<sessionId>/<participantId>`), set at the buzzer; the recordings are deleted once measured |
+| `voiceLevels?` | map `{ seller: string, buyer: string }` | speaking level per 100 ms of the replay, one digit 0–9 each (`""` if a side wasn't recorded); set by `SlotTick`, public with the replay |
 | `hidden?` | boolean | admin hide |
 | `GSI1PK?`, `GSI1SK?` | `"REPLAY"`, `endedAt` | present only when the replay is listable (recording ready, not hidden) |
 

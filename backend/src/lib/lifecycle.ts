@@ -5,6 +5,7 @@ import * as ivs from "./ivs";
 import { logger, metrics } from "./observability";
 import { ROUND_MS, roundsOfSlot, saveBriefs, transition, type RoundMeta } from "./rounds";
 import { pacificDate, slotsForDate } from "./slots";
+import { measureVoices } from "./voices";
 
 // Round lifecycle (docs/system_specs/architecture.md §4). Every step is a conditional transition, so ticks can repeat.
 const MIN = 60_000;
@@ -77,10 +78,12 @@ async function stepRound(r: RoundMeta, t: number, now: number, products: Set<str
     }
     case "ended":
       await checkRecording(r, t, now);
+      await checkVoices(r);
       if (now >= t + CLOSE_AFTER) await closeRound(r);
       return;
     case "closed":
-      return checkRecording(r, t, now);
+      await checkRecording(r, t, now);
+      return checkVoices(r);
   }
 }
 
@@ -161,8 +164,12 @@ export async function cancelRound(r: RoundMeta, reason: "no_show" | "admin") {
 export async function endRound(r: RoundMeta, now = Date.now(), endedBy?: "admin") {
   await ivs.sendRoundEvent(r.chatRoomArn!, "buzzer", {}).catch((e) => logger.warn("buzzer event failed", { error: (e as Error).message }));
   if (r.compositionArn) await ivs.stopComposition(r.compositionArn);
+  // Before the stage goes: its sessions say where each player's individual recording is. Missing them only costs the meters.
+  const voicePrefixes = await ivs
+    .participantRecordingPrefixes(r.stageArn!, { seller: r.sellerBookingId, buyer: r.buyerBookingId })
+    .catch((e) => void logger.warn("Couldn't list participant recordings", { roundId: r.roundId, error: (e as Error).message }));
   await ivs.deleteStage(r.stageArn!);
-  const ok = await transition(r.roundId, "live", { status: "ended", endedAt: new Date(now).toISOString(), ...(endedBy && { endedBy }) });
+  const ok = await transition(r.roundId, "live", { status: "ended", endedAt: new Date(now).toISOString(), ...(endedBy && { endedBy }), ...(voicePrefixes && { voicePrefixes }) });
   if (ok) logger.info("Round ended", { roundId: r.roundId, endedBy });
   return ok;
 }
@@ -185,4 +192,14 @@ async function checkRecording(r: RoundMeta, t: number, now: number) {
   }
   const recordingPath = `${r.recordingPrefix}/media/hls/multivariant.m3u8`;
   if (await transition(r.roundId, r.status, { recordingPath, GSI1PK: "REPLAY", GSI1SK: r.endedAt! })) logger.info("Replay registered", { roundId: r.roundId, recordingPath });
+}
+
+/** Once the replay is listed and every individual recording is final: save each side's speaking levels, then delete those recordings. */
+async function checkVoices(r: RoundMeta) {
+  const p = r.voicePrefixes;
+  if (!p || r.voiceLevels || r.hidden || !r.recordingPath || (!p.seller.length && !p.buyer.length)) return;
+  const voiceLevels = await measureVoices(r.recordingPrefix!, p);
+  if (!voiceLevels || !(await transition(r.roundId, r.status, { voiceLevels }))) return;
+  logger.info("Voice levels saved", { roundId: r.roundId });
+  await Promise.all([...p.seller, ...p.buyer].map(ivs.deletePrefix));
 }

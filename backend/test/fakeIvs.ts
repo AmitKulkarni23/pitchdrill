@@ -47,5 +47,9 @@ export function installFakeIvs() {
     sendRoundEvent: async (room: string, name: string, attrs: Record<string, string>) => void fake.events.push({ room, name, attrs }),
     recordingEnded: async (prefix: string) => fake.recordings.has(prefix),
     hideRecording: async (prefix: string) => void fake.hiddenRecordings.add(prefix),
+    participantRecordingPrefixes: async () => ({ seller: [], buyer: [] }),
+    listKeys: async () => [],
+    getObject: async () => new Uint8Array(),
+    deletePrefix: async () => {},
   }));
 }

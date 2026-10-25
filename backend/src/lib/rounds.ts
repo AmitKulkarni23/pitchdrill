@@ -3,6 +3,7 @@ import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { db, TABLE } from "./db";
 import { UserError } from "./http";
 import type { Briefs } from "./briefs";
+import type { VoiceLevels } from "./voices";
 
 export type RoundStatus = "paired" | "ready" | "live" | "cancelled" | "ended" | "closed";
 
@@ -28,6 +29,9 @@ export interface RoundMeta {
   recordingPath?: string;
   recordingMissingLogged?: boolean;
   hidden?: boolean;
+  /** Each side's individual-recording S3 prefixes, collected at the buzzer; deleted once measured into voiceLevels. */
+  voicePrefixes?: Record<"seller" | "buyer", string[]>;
+  voiceLevels?: VoiceLevels;
 }
 
 export const ROUND_MS = 2 * 60_000;
@@ -66,6 +70,7 @@ export function toPublicRound(r: RoundMeta) {
     votesNotSold: r.votesNotSold ?? 0,
     product: productPublic && r.briefs ? r.briefs.product : undefined,
     briefs: productPublic && r.briefs ? { seller: r.briefs.seller, buyer: personaPublic ? r.briefs.buyer : undefined } : undefined,
+    voiceLevels: r.recordingPath ? r.voiceLevels : undefined,
     replayUrl: r.recordingPath ? `https://${process.env.RECORDINGS_CDN_DOMAIN_ENV}/${r.recordingPath}` : undefined,
   };
 }
