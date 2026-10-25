@@ -2,6 +2,9 @@ export const SLOT_TZ = "America/Los_Angeles";
 const FIRST_MINUTE = 16 * 60; // 4:00 PM
 const LAST_MINUTE = 20 * 60 + 45; // 8:45 PM
 const STEP_MINUTES = 15;
+// ponytail: extra test slots (12:40, 12:50, 1:00 PM) on one day only; delete after testing, with the SlotTick hours in backend-stack.ts.
+const TEST_DATE = "2026-10-25";
+const TEST_MINUTES = [12 * 60 + 40, 12 * 60 + 50, 13 * 60];
 
 const partsFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: SLOT_TZ,
@@ -33,7 +36,9 @@ export function pacificDate(utcMs: number): string {
 export function slotsForDate(date: string): string[] {
   const [y, m, d] = date.split("-").map(Number);
   const slots: string[] = [];
-  for (let min = FIRST_MINUTE; min <= LAST_MINUTE; min += STEP_MINUTES) {
+  const minutes = date === TEST_DATE ? [...TEST_MINUTES] : [];
+  for (let min = FIRST_MINUTE; min <= LAST_MINUTE; min += STEP_MINUTES) minutes.push(min);
+  for (const min of minutes) {
     const wall = Date.UTC(y!, m! - 1, d!, 0, min);
     slots.push(new Date(wall - tzOffset(wall)).toISOString());
   }
