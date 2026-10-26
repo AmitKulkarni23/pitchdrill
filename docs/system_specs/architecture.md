@@ -205,7 +205,6 @@ sequenceDiagram
 - User text (handles, nicknames, comments, report reasons) is length-limited and validated server-side; React escapes it on render.
 - Replays of hidden rounds are not listed and `GET /rounds/{id}` returns 404 for them. Hiding also tags the recording's S3 objects `hidden=true` (the bucket policy denies CloudFront those objects) and invalidates the CDN cache, so old replay URLs stop working; the recording is kept.
 - Ticket links are `/t#<ticket>`: the fragment is never sent to Vercel, so tickets stay out of request logs, Referer headers, Vercel Analytics (`beforeSend` drops fragments) and RUM (page IDs are paths).
-- The site password is compared in constant time (SHA-256 digests + `timingSafeEqual`).
 - US only (website): `frontend/src/proxy.ts` rewrites visitors whose `x-vercel-ip-country` isn't `US` to `/coming-soon`. The API is not geo-blocked (HTTP APIs have no WAF; that would need CloudFront in front).
 - The contact address is never in Git: it lives in SSM `/pitchdrill/contact-email` and CloudFormation resolves it at deploy into the SES identity and `CONTACT_EMAIL_ENV`.
 

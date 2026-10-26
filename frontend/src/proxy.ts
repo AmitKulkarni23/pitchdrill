@@ -1,22 +1,10 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 
-const digest = (s: string) => createHash("sha256").update(s).digest();
-
-// ponytail: one shared password (Basic Auth) for private testing. To make the site public, drop the password check and keep geoGate.
-// SITE_PASSWORD is set in Vercel; locally the gate is off unless you set it. Production without it fails closed.
 export function proxy(request: NextRequest) {
   // Old ticket links (/t/<ticket>) move the ticket into the fragment, which never reaches the server again.
   const old = request.nextUrl.pathname.match(/^\/t\/([^/]+)$/);
   if (old) return NextResponse.redirect(new URL(`/t#${old[1]}`, request.url), 308);
-  const password = process.env.SITE_PASSWORD;
-  if (!password && process.env.NODE_ENV !== "production") return NextResponse.next();
-  const [scheme, encoded] = (request.headers.get("authorization") ?? "").split(" ");
-  if (password && scheme === "Basic" && encoded) {
-    const given = atob(encoded).split(":").slice(1).join(":"); // any username; the password is what counts
-    if (timingSafeEqual(digest(given), digest(password))) return geoGate(request); // equal-length digests: constant time
-  }
-  return new NextResponse("Password required", { status: 401, headers: { "WWW-Authenticate": 'Basic realm="PitchDrill"' } });
+  return geoGate(request);
 }
 
 // US only for now: Vercel sets x-vercel-ip-country on every request; other countries see /coming-soon. Locally the header

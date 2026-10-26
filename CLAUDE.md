@@ -178,7 +178,7 @@ The visual system is **Study Hall**: a calm, light learning app (online-chess-ar
 - AWS access lives in Lambda IAM roles granted with `.grant*()`, never in the frontend. Services without grant methods (IVS) get `addToRolePolicy` scoped to exact actions and resources, with a comment.
 - Admin routes use API Gateway IAM (SigV4) auth; public routes have no authorizer.
 - API Gateway HTTP API per-route throttles (all users combined, not per IP — HTTP APIs don't support WAF). Limits in `docs/system_specs/architecture.md`.
-- CORS allows `http://localhost:3000` and the Vercel production domain `https://pitchdrill-azure.vercel.app`. The Vercel site is behind a shared password (`frontend/src/proxy.ts`, `SITE_PASSWORD`) until testing is done.
+- CORS allows `http://localhost:3000` and the Vercel production domain `https://pitchdrill-azure.vercel.app`. The site is public (US only, `frontend/src/proxy.ts`).
 
 ## Error Handling
 
