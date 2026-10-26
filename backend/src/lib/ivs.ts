@@ -48,7 +48,12 @@ export async function createStage(roundId: string): Promise<string> {
 export const deleteStage = (arn: string) => stages.send(new DeleteStageCommand({ arn })).then(() => {}, ignoreNotFound);
 
 export async function createRoom(roundId: string): Promise<string> {
-  const room = await chat.send(new CreateRoomCommand({ name: `pitchdrill-${roundId}`, tags: { round: roundId } }));
+  // Every spectator message passes through ReviewChatMessage, which saves it as a comment. ALLOW on failure/timeout keeps chat up.
+  // Unset locally (bun run dev), so local chat isn't saved.
+  const uri = process.env.CHAT_REVIEW_HANDLER_ARN_ENV;
+  const room = await chat.send(
+    new CreateRoomCommand({ name: `pitchdrill-${roundId}`, tags: { round: roundId }, messageReviewHandler: uri ? { uri, fallbackResult: "ALLOW" } : undefined }),
+  );
   return room.arn!;
 }
 export const deleteRoom = (identifier: string) => chat.send(new DeleteRoomCommand({ identifier })).then(() => {}, ignoreNotFound);

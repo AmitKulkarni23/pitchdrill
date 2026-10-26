@@ -277,6 +277,13 @@ export class PitchDrillBackendStack extends cdk.Stack {
     allow(slotTick, ['ivs:StartComposition', 'ivs:StopComposition', 'ivs:TagResource'], [ivsArn('composition'), ivsArn('stage'), encoder.attrArn, storage.attrArn]);
     allow(slotTick, ['ivschat:CreateRoom', 'ivschat:DeleteRoom', 'ivschat:SendEvent', 'ivschat:TagResource'], [roomArn]);
 
+    // ReviewChatMessage: IVS Chat calls it for every spectator message (rooms are created with it by SlotTick) and it
+    // saves the message as a comment. IVS waits 200 ms, then falls back to ALLOW; the write still finishes.
+    const reviewChatMessage = makeFunction('ReviewChatMessage');
+    table.grantWriteData(reviewChatMessage);
+    reviewChatMessage.addPermission('IvsChatInvoke', { principal: new iam.ServicePrincipal('ivschat.amazonaws.com'), sourceArn: roomArn, sourceAccount: this.account });
+    slotTick.addEnvironment('CHAT_REVIEW_HANDLER_ARN_ENV', reviewChatMessage.functionArn);
+
     new scheduler.Schedule(this, 'PitchDrillSlotTickSchedule', {
       scheduleName: 'pitchdrill-slot-tick',
       description: 'Every minute during slot hours (4:00–8:45 PM Pacific slots, with margin either side).',
@@ -560,7 +567,7 @@ export class PitchDrillBackendStack extends cdk.Stack {
           new cloudwatch.AlarmStatusWidget({ title: 'Alarms', alarms, width: 8, height: 6 }),
         ],
         [
-          graph('Lambda errors', [...Object.values(fns), slotTick, generateBriefs].map((fn) => fn.metricErrors({ label: fn.node.id, period: cdk.Duration.minutes(5) })), 16),
+          graph('Lambda errors', [...Object.values(fns), slotTick, generateBriefs, reviewChatMessage].map((fn) => fn.metricErrors({ label: fn.node.id, period: cdk.Duration.minutes(5) })), 16),
           graph('Browser errors, RUM (per 15 min)', ['JsErrorCount', 'HttpErrorCount'].map(rumMetric)),
         ],
       ],

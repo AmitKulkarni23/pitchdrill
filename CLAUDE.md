@@ -159,7 +159,7 @@ The visual system is **Study Hall**: a calm, light learning app (online-chess-ar
 
 - **No API routes on Vercel.** Next.js is the frontend only. All data access goes through the AWS API (API Gateway → Lambda → DynamoDB).
 - **IVS Real-Time** for the seller/buyer split screen, one stage per round; spectators subscribe with view-only tokens. Composite recording goes to S3.
-- **IVS Chat** for live comments during a round; replay comments are stored in DynamoDB.
+- **IVS Chat** for live comments during a round; every chat message is saved to DynamoDB as a comment by an IVS Chat review handler, alongside replay comments.
 - **OpenRouter** for product briefs and buyer personas, called only from Lambda (key in Secrets Manager when added).
 - **EventBridge Scheduler** opens stages before a slot and closes them after the round.
 

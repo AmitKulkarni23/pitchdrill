@@ -14,5 +14,5 @@ export const handler = handle(async (event) => {
   const lower = nickname.toLowerCase();
   if (lower === round.sellerHandle.toLowerCase() || lower === round.buyerHandle.toLowerCase())
     throw new UserError(409, "nickname_taken", "That nickname belongs to a player in this round. Pick another.");
-  return json(200, await chatToken(round.chatRoomArn, `viewer-${voterId}`, { nickname }, true, 60));
+  return json(200, await chatToken(round.chatRoomArn, `viewer-${voterId}`, { nickname, roundId }, true, 60));
 });

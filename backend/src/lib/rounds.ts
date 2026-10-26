@@ -1,4 +1,5 @@
-import { BatchGetCommand, type BatchGetCommandOutput, GetCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { randomUUID } from "node:crypto";
+import { BatchGetCommand, type BatchGetCommandOutput, GetCommand, PutCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { db, TABLE } from "./db";
 import { UserError } from "./http";
@@ -150,4 +151,11 @@ export async function saveBriefs(roundId: string, briefs: Briefs): Promise<boole
     if (e instanceof ConditionalCheckFailedException) return false;
     throw e;
   }
+}
+
+/** One comment item, written by both POST /comments (replays) and the chat review handler (live chat). */
+export async function saveComment(roundId: string, c: { voterId: string; nickname: string; text: string; commentId?: string }) {
+  const comment = { commentId: c.commentId ?? randomUUID(), nickname: c.nickname, text: c.text, createdAt: new Date().toISOString() };
+  await db.send(new PutCommand({ TableName: TABLE, Item: { PK: `ROUND#${roundId}`, SK: `COMMENT#${comment.createdAt}#${comment.commentId}`, voterId: c.voterId, ...comment } }));
+  return comment;
 }

@@ -6,7 +6,7 @@ import { api, ApiError } from "@/lib/api";
 import { getNickname, getVoterId, setNickname } from "@/lib/storage";
 import { reportError } from "@/lib/rum";
 import { hall, panel } from "@/config/tokens";
-import type { ChatToken } from "@/types/api";
+import type { ChatToken, Comment } from "@/types/api";
 
 type Line = { id: string; nickname: string; text: string };
 export type RoundEvent = { name: string; attributes: Record<string, string> };
@@ -27,6 +27,15 @@ export function ChatPanel({ roundId, participantToken, onEvent }: { roundId: str
     onEventRef.current = onEvent;
   });
   const canSend = !participantToken;
+
+  // Chat messages are saved as comments (server-side review handler), so a refresh starts from what was already said.
+  // ponytail: first page only (50); page through /comments if live chats ever get longer.
+  useEffect(() => {
+    api
+      .get<{ comments: Comment[] }>(`/rounds/${roundId}/comments`)
+      .then(({ comments }) => setLines((l) => [...comments.map((c) => ({ id: c.commentId, nickname: c.nickname, text: c.text })).filter((c) => !l.some((x) => x.id === c.id)), ...l]))
+      .catch(() => {}); // history is a nicety; live chat still works without it
+  }, [roundId]);
 
   useEffect(() => {
     if (!participantToken && !nickname) return;

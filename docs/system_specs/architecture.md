@@ -87,7 +87,7 @@ All of it is one CDK stack, `PitchDrillBackendStack` (`infra/lib/backend-stack.t
 | CORS | `http://localhost:3000` and `https://pitchdrill-azure.vercel.app` (Vercel production). |
 | Live video | IVS Real-Time: one stage per round. Seller/buyer get PUBLISH+SUBSCRIBE tokens; spectators SUBSCRIBE-only (~0.3s latency). Rounds are audio only for now (players join with their mic; the camera code stays for later); publishing audio alone counts as present. Browsers subscribe to nobody until the round is `live`, so players can't hear each other (and spectators can't hear them) before the start; this is client-side, not enforced by the tokens. |
 | Recording | IVS server-side composition (grid layout, split screen) to S3, served via CloudFront (OAC). The replay page plays its audio under the players' initials (the picture is only IVS camera-off icons). Stages also record each player individually (`AUDIO_ONLY`, 10 s reconnect window, written by IVS's service-linked role) only to measure speaking levels: `SlotTick` decodes them with ffmpeg (Lambda layer, `/opt/bin/ffmpeg`), aligns them to the composite by `EXT-X-PROGRAM-DATE-TIME`, saves `voiceLevels` and deletes them. The replay draws a level bar per side from it. |
-| Chat | IVS Chat: one room per round. Spectators get SEND_MESSAGE tokens with their nickname; participants get receive-only tokens. Server events (round started, buzzer, tally) are sent with `SendEvent`. |
+| Chat | IVS Chat: one room per round. Spectators get SEND_MESSAGE tokens with their nickname; participants get receive-only tokens. Server events (round started, buzzer, tally) are sent with `SendEvent`. Rooms are created with a message review handler (`ReviewChatMessage` Lambda, fallback ALLOW) that saves every spectator message as a comment (same `COMMENT#` item as `POST /comments`), so chat survives a refresh and becomes the replay's comment thread. IVS waits 200 ms; on a timeout the message is delivered and the write still completes. The chat token carries `{ nickname, roundId }`; `voterId` comes from its `viewer-<voterId>` userId. |
 | Briefs | OpenRouter, random product, generated when a round is paired (DynamoDB stream). Model ID is the CDK constant `OPENROUTER_MODEL` = `anthropic/claude-haiku-5.5` (chosen by the user). Fallback product list if generation fails. |
 | No-shows | The round goes live as soon as both sides are publishing at or after T (the tick before T polls every 2 s). If either is still missing at T+1m, it is cancelled (`no_show`). |
 | Votes | One per `voterId` per round, "Sold" / "Not sold", open from the buzzer forever (replays too). Tally always visible, broadcast live. |
@@ -142,7 +142,7 @@ All responses are JSON. Errors are `{ error: { code, message } }` with a user-sa
 | `POST /rounds/{roundId}/chat-token` | public | `{ voterId, nickname }` → SEND_MESSAGE chat token | 010 |
 | `POST /rounds/{roundId}/votes` | public | `{ voterId, vote }`, one per voter | 011 |
 | `GET /replays` | public | Recent replays, newest first, paginated | 012 |
-| `GET /rounds/{roundId}/comments` | public | Replay comments, oldest first, paginated | 012 |
+| `GET /rounds/{roundId}/comments` | public | Comments (saved live chat + replay comments), oldest first, paginated | 012 |
 | `POST /rounds/{roundId}/comments` | public | `{ voterId, nickname, text }` | 012 |
 | `POST /rounds/{roundId}/reports` | public | `{ voterId, reason }` | 013 |
 | `POST /contact` | public | `{ name, email, message, website }` → emails the owner via SES (Reply-To the sender; `website` is a honeypot) | 022 |

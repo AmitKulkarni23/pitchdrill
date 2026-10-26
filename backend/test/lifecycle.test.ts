@@ -158,6 +158,11 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     const list = await api("GET", `/rounds/${r1}/comments`);
     expect(list.body.comments).toHaveLength(1);
     expect(list.body.comments[0].voterId).toBeUndefined();
+    // Live chat goes through the review handler into the same comment list, in time order.
+    const { handler: review } = await import("../src/handlers/reviewChatMessage");
+    const res = await review({ Content: "Live!", MessageId: "m1", Sender: { UserId: `viewer-${v}`, Attributes: { nickname: "fan", roundId: r1 } } }, {} as never);
+    expect(res).toEqual({ ReviewResult: "ALLOW" });
+    expect((await api("GET", `/rounds/${r1}/comments`)).body.comments.map((x: { text: string }) => x.text)).toEqual(["Great close!", "Live!"]);
     expect((await api("GET", `/rounds/${r1}/comments?cursor=garbage`)).body.error.code).toBe("bad_cursor");
     expect((await api("POST", `/rounds/${r1}/reports`, { voterId: v, reason: "spam" })).status).toBe(201);
     expect((await api("POST", `/rounds/${r1}/reports`, { voterId: v, reason: "spam" })).body.error.code).toBe("already_reported");
