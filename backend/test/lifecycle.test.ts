@@ -166,7 +166,6 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     expect((await api("GET", `/rounds/${r1}/comments?cursor=garbage`)).body.error.code).toBe("bad_cursor");
     expect((await api("POST", `/rounds/${r1}/reports`, { voterId: v, reason: "spam" })).status).toBe(201);
     expect((await api("POST", `/rounds/${r1}/reports`, { voterId: v, reason: "spam" })).body.error.code).toBe("already_reported");
-    expect((await api("GET", "/admin/reports")).body.reports[0]).toMatchObject({ roundId: r1, reason: "spam", round: { status: "ended" } });
   });
 
   test("recording lands → replay feed; T+15m closes the room; hide removes it", async () => {

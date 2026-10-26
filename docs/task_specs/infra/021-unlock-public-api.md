@@ -25,7 +25,7 @@ Read and follow these before writing ANY code:
 
 ### Verification (production)
 
-5. Anonymous `GET /slots` → 200; anonymous `GET /admin/reports` → 403; signed `GET /admin/reports` → 200.
+5. Anonymous `GET /slots` → 200; anonymous `POST /admin/rounds/<id>/hide` → 403; signed admin call → 200. (`GET /admin/reports` was removed 2026-10-26; reports are read with the AWS CLI.)
 6. CORS preflight from the Vercel origin → allowed; from another origin → no `access-control-allow-origin`.
 7. With the user, run one real round end-to-end on the deployed site (two devices + one spectator): book, pair, briefs, arena, buzzer, votes, replay. Then hide the test round with the admin route if the user wants it gone.
 

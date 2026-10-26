@@ -202,7 +202,7 @@ export class PitchDrillBackendStack extends cdk.Stack {
     const fns: Record<string, lambda.Function> = {};
     for (const route of routes) fns[route.handler] = makeFunction(pascal(route.handler), { environment: apiEnv });
 
-    const readers = ['listSlots', 'getTicket', 'listLiveRounds', 'getRound', 'getBrief', 'joinRound', 'watchRound', 'createChatToken', 'listReplays', 'listComments', 'adminListReports'];
+    const readers = ['listSlots', 'getTicket', 'listLiveRounds', 'getRound', 'getBrief', 'joinRound', 'watchRound', 'createChatToken', 'listReplays', 'listComments'];
     const writers = ['createBooking', 'castVote', 'createComment', 'createReport', 'adminEndRound', 'adminHideRound'];
     readers.forEach((h) => table.grantReadData(fns[h]!));
     writers.forEach((h) => table.grantReadWriteData(fns[h]!));
@@ -489,7 +489,7 @@ export class PitchDrillBackendStack extends cdk.Stack {
 
     // A round was reported (createReport logs "Round reported" at WARN). 1-minute period so each report alarms on its own.
     // ponytail: reports within the same minute (or while still in ALARM) collapse into one Slack message, and the alarm
-    // can't carry the roundId; /admin/reports has the details. A per-report Chatbot custom notification would fix both.
+    // can't carry the roundId; query PK=REPORTS (CLAUDE.md) for the details. A per-report Chatbot custom notification would fix both.
     const reportsFilter = new logs.MetricFilter(this, 'PitchDrillRoundReportedFilter', {
       logGroup: logGroups.CreateReport!,
       filterPattern: logs.FilterPattern.stringValue('$.message', '=', 'Round reported'),
@@ -501,7 +501,7 @@ export class PitchDrillBackendStack extends cdk.Stack {
     new cloudwatch.Alarm(this, 'PitchDrillRoundReportedAlarm', {
       alarmName: 'pitchdrill-round-reported',
       alarmDescription:
-        'A spectator reported a round (abuse, spam or a broken round). List recent reports with GET /admin/reports (SigV4), ' +
+        'A spectator reported a round (abuse, spam or a broken round). List recent reports: aws dynamodb query on pitchdrill-main PK=REPORTS (see CLAUDE.md), ' +
         'then hide the round (POST /admin/rounds/<roundId>/hide) or end it if live (POST /admin/rounds/<roundId>/end).',
       metric: reportsFilter.metric({ statistic: 'Sum', period: cdk.Duration.minutes(1) }),
       threshold: 1,

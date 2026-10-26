@@ -126,6 +126,13 @@ curl --aws-sigv4 "aws:amz:us-west-2:execute-api" --user "$AWS_ACCESS_KEY_ID:$AWS
   -X POST https://4yyqqe2zwj.execute-api.us-west-2.amazonaws.com/admin/rounds/<roundId>/hide
 ```
 
+Admin routes are `POST /admin/rounds/<roundId>/hide` and `/end`. Recent reports (newest first) come straight from DynamoDB:
+
+```bash
+aws dynamodb query --region us-west-2 --table-name pitchdrill-main --key-condition-expression 'PK = :p' \
+  --expression-attribute-values '{":p":{"S":"REPORTS"}}' --no-scan-index-forward --max-items 20
+```
+
 OpenRouter key (set by the user, never in chat or Git): `aws secretsmanager put-secret-value --region us-west-2 --secret-id pitchdrill/openrouter-api-key --secret-string '<key>'`. Without it, rounds get canned briefs from `backend/src/lib/fallbackBriefs.ts`.
 
 Contact-form address (set by the user before the first deploy that includes it, never in Git): `aws ssm put-parameter --region us-west-2 --name /pitchdrill/contact-email --type String --value '<email>'`. SES emails it a verification link on deploy; the form sends once it's clicked. Locally, export `CONTACT_EMAIL_ENV` before `bun run dev` to send real mail.

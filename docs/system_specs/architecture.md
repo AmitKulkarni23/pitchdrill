@@ -146,7 +146,6 @@ All responses are JSON. Errors are `{ error: { code, message } }` with a user-sa
 | `POST /rounds/{roundId}/comments` | public | `{ voterId, nickname, text }` | 012 |
 | `POST /rounds/{roundId}/reports` | public | `{ voterId, reason }` | 013 |
 | `POST /contact` | public | `{ name, email, message, website }` → emails the owner via SES (Reply-To the sender; `website` is a honeypot) | 022 |
-| `GET /admin/reports` | IAM | Recent reports | 013 |
 | `POST /admin/rounds/{roundId}/end` | IAM | End a live round now | 013 |
 | `POST /admin/rounds/{roundId}/hide` | IAM | Hide a replay (feed + round page) | 013 |
 
@@ -220,5 +219,5 @@ sequenceDiagram
 - CloudWatch dashboard `pitchdrill`: business metrics, API requests / 4xx / 5xx / latency, alarm status, Lambda errors.
 - Frontend page views: Vercel Web Analytics (`<Analytics />` in the root layout).
 - Browser errors: CloudWatch RUM app monitor `pitchdrill` (`frontend/src/lib/rum.ts`, production only via `NEXT_PUBLIC_RUM_APP_MONITOR_ID`). Unsigned events allowed by a resource policy (no Cognito), domain-locked to the Vercel site. Records uncaught errors, failed fetches, Web Vitals, page crashes (`app/error.tsx`) and caught IVS / chat / mic failures (`reportError`). Alarm `pitchdrill-users-hitting-browser-errors` (≥5 JS errors in 15 min). Nothing is logged to the browser console.
-- Reports: `createReport` logs "Round reported" at WARN; a metric filter feeds alarm `pitchdrill-round-reported` (≥1 in 1 min), which goes to `pitchdrill-alerts` → Slack like every alarm. Reports in the same minute collapse into one message and the alarm has no roundId; `GET /admin/reports` lists them.
+- Reports: `createReport` logs "Round reported" at WARN; a metric filter feeds alarm `pitchdrill-round-reported` (≥1 in 1 min), which goes to `pitchdrill-alerts` → Slack like every alarm. Reports in the same minute collapse into one message and the alarm has no roundId; list them with `aws dynamodb query` on `PK = REPORTS` (CLAUDE.md).
 - Lambda crash / timeout alarms for the non-API Lambdas: `pitchdrill-rounds-stalled` (SlotTick) and `pitchdrill-briefs-generator-crashing` (GenerateBriefs), on the Lambda `Errors` metric.
