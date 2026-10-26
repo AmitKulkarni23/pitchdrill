@@ -50,6 +50,7 @@ export function CommentsPanel({ roundId, open }: { roundId: string; open: boolea
       ))}
       {next && <Button onClick={() => load(next)} sx={{ justifySelf: "start" }}>Load more</Button>}
       {error && <Alert severity="error">{error}</Alert>}
+      {!open && <Typography variant="body2" sx={{ color: hall.muted }}>You played this round, so you can&apos;t comment on it.</Typography>}
       {open &&
         (nickname ? (
           <Box component="form" onSubmit={post} sx={{ display: "flex", gap: 1 }}>

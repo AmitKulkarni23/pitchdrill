@@ -86,11 +86,12 @@ function WatchPage() {
               tint={hall.buyer}
             />
           </Box>
-          {(round.status === "ended" || round.status === "closed") && <CommentsPanel roundId={round.roundId} open={!played} />}
         </Box>
         <Box sx={{ display: "grid", gap: 2.5 }}>
           <VotePanel round={round} tally={round} onTally={(t) => setRound((r) => r && { ...r, ...t })} played={played} />
-          {(liveish || round.status === "ended") && <ChatPanel roundId={round.roundId} onEvent={onEvent} />}
+          {/* Live chat isn't saved, so it's only offered while the round can still be watched live; afterwards it's comments. */}
+          {liveish && <ChatPanel roundId={round.roundId} onEvent={onEvent} />}
+          {(round.status === "ended" || round.status === "closed") && <CommentsPanel roundId={round.roundId} open={!played} />}
         </Box>
       </Box>
     </RoundShell>
