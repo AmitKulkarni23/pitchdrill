@@ -487,6 +487,29 @@ export class PitchDrillBackendStack extends cdk.Stack {
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
 
+    // A round was reported (createReport logs "Round reported" at WARN). 1-minute period so each report alarms on its own.
+    // ponytail: reports within the same minute (or while still in ALARM) collapse into one Slack message, and the alarm
+    // can't carry the roundId; /admin/reports has the details. A per-report Chatbot custom notification would fix both.
+    const reportsFilter = new logs.MetricFilter(this, 'PitchDrillRoundReportedFilter', {
+      logGroup: logGroups.CreateReport!,
+      filterPattern: logs.FilterPattern.stringValue('$.message', '=', 'Round reported'),
+      metricNamespace: 'PitchDrill',
+      metricName: 'RoundReported',
+      metricValue: '1',
+      defaultValue: 0,
+    });
+    new cloudwatch.Alarm(this, 'PitchDrillRoundReportedAlarm', {
+      alarmName: 'pitchdrill-round-reported',
+      alarmDescription:
+        'A spectator reported a round (abuse, spam or a broken round). List recent reports with GET /admin/reports (SigV4), ' +
+        'then hide the round (POST /admin/rounds/<roundId>/hide) or end it if live (POST /admin/rounds/<roundId>/end).',
+      metric: reportsFilter.metric({ statistic: 'Sum', period: cdk.Duration.minutes(1) }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
     // CloudWatch RUM for the Vercel site (frontend/src/lib/rum.ts): browser errors, failed fetches, Web Vitals.
     // Browsers send events unsigned, allowed by the resource policy, so there is no Cognito identity pool; RUM
     // rejects events from any other domain. Events are kept 30 days in the RUM console.
