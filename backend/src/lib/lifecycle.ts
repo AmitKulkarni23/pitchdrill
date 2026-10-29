@@ -20,7 +20,7 @@ const WINDOW_AFTER = 20 * MIN;
 /**
  * A tick ends rounds whose buzzer falls within this lead, waiting the rest, so rounds last exactly 2 min. It must cover
  * the full tick interval (plus jitter): with less, a buzzer between two ticks waits for the next one. Overlapping ticks
- * are fine, endRound is a conditional transition. Lead + endRound stays under SlotTick's 90 s timeout.
+ * are fine, endRound is a conditional transition. Lead + RECORDING_TAIL + endRound stays under SlotTick's 90 s timeout.
  */
 const END_LEAD = MIN + 10_000;
 /**
@@ -30,6 +30,12 @@ const END_LEAD = MIN + 10_000;
  */
 const START_LEAD = MIN;
 const START_POLL = 50_000;
+// ponytail: fixed waits measured on one round (recording began ~2 s late; the last ~5 s were lost at teardown). Poll for
+// recording-started.json / wait for the final segment instead if they ever prove too short.
+/** IVS composite recording starts writing ~2 s after StartComposition, so the 2-min clock starts only once it's running. */
+const RECORDING_WARMUP = 3_000;
+/** The recording lags live by a few seconds; after the buzzer it keeps going this long so the last words get written. */
+const RECORDING_TAIL = 6_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -143,7 +149,8 @@ async function startOrCancel(r: RoundMeta, t: number, now: number, pollUntil = 0
     return;
   }
   const { compositionArn, recordingPrefix } = await ivs.startComposition(r.stageArn!, r.roundId);
-  const startedAt = new Date(now).toISOString();
+  await sleep(RECORDING_WARMUP); // still "ready": players can't hear each other yet, so nothing is said off the record
+  const startedAt = new Date(now + RECORDING_WARMUP).toISOString();
   if (!(await transition(r.roundId, "ready", { status: "live", startedAt, compositionArn, ...(recordingPrefix && { recordingPrefix }) }))) return;
   metrics.addMetric("RoundStarted", MetricUnit.Count, 1);
   logger.info("Round live", { roundId: r.roundId, compositionArn, recordingPrefix });
@@ -163,6 +170,7 @@ export async function cancelRound(r: RoundMeta, reason: "no_show" | "admin") {
 /** Buzzer: stop recording, drop the stage, open voting. The chat room stays until T+15m for the tally. */
 export async function endRound(r: RoundMeta, now = Date.now(), endedBy?: "admin") {
   await ivs.sendRoundEvent(r.chatRoomArn!, "buzzer", {}).catch((e) => logger.warn("buzzer event failed", { error: (e as Error).message }));
+  await sleep(RECORDING_TAIL); // players stop publishing at the buzzer (/t), so the tail is silent
   if (r.compositionArn) await ivs.stopComposition(r.compositionArn);
   // Before the stage goes: its sessions say where each player's individual recording is. Missing them only costs the meters.
   const voicePrefixes = await ivs

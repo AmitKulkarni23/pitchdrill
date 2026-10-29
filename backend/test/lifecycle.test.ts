@@ -113,8 +113,12 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     const [m1, m2] = [await getRound(r1), await getRound(r2)];
     fake.publishing.set(m1!.stageArn!, [m1!.sellerBookingId, m1!.buyerBookingId]);
     fake.publishing.set(m2!.stageArn!, [m2!.sellerBookingId]);
-    await at(T - 1000); // the tick just before T waits for T and starts on the dot
-    expect((await getRound(r1))!).toMatchObject({ status: "live", startedAt: SLOT });
+    // The clock is mocked, timers aren't, so waits run instantly; the spy records how long each one was.
+    const wait = globalThis.setTimeout;
+    const instant = spyOn(globalThis, "setTimeout").mockImplementation(((fn: () => void) => wait(fn, 0)) as never);
+    await at(T - 1000); // the tick just before T waits for T, starts recording, then starts the clock once it's running
+    instant.mockRestore();
+    expect((await getRound(r1))!).toMatchObject({ status: "live", startedAt: new Date(T + 3000).toISOString() });
     await at(T + 2000);
     expect((await getRound(r2))!.status).toBe("ready");
     expect(fake.events.some((e) => e.name === "round_started")).toBe(true);
@@ -123,11 +127,11 @@ describe.skipIf(!process.env.DYNAMODB_ENDPOINT)("round lifecycle", () => {
     expect(live.product.name).toBeString();
     expect(live.briefs.seller).toEqual((await getRound(r1))!.briefs!.seller);
     expect(live.briefs.buyer).toBeUndefined(); // persona stays hidden until the buzzer
-    // This tick also waits out r1's buzzer (T+2m, within END_LEAD); the clock is mocked, timers aren't, so skip the wait.
-    const wait = globalThis.setTimeout;
-    const instant = spyOn(globalThis, "setTimeout").mockImplementation(((fn: () => void) => wait(fn, 0)) as never);
+    // This tick also waits out r1's buzzer (T+3s+2m, within END_LEAD), then the recording's tail.
+    const ending = spyOn(globalThis, "setTimeout").mockImplementation(((fn: () => void) => wait(fn, 0)) as never);
     await at(T + MIN);
-    instant.mockRestore();
+    expect(ending.mock.calls.some(([, ms]) => ms === 6000)).toBe(true);
+    ending.mockRestore();
     expect((await getRound(r1))!.status).toBe("ended");
     const cancelled = await getRound(r2);
     expect(cancelled).toMatchObject({ status: "cancelled", cancelReason: "no_show" });
