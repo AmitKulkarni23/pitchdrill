@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Box, ButtonBase, Typography } from "@mui/material";
+import { Box, ButtonBase, CircularProgress, Typography } from "@mui/material";
 import { useNow, useTimeZone } from "@/hooks/useClock";
 import { api } from "@/lib/api";
 import { countdown, dayLabel, groupSlotsByLocalDay, isFull, MAX_PER_ROLE, scheduleSlots, seatsLabel, slotLabel, timeLabel, waitHint } from "@/lib/slots";
@@ -14,6 +14,18 @@ type Slot = { slotId: string; stats: Omit<SlotWithStats, "slotId"> | null };
 
 const row = { display: "flex", flexWrap: "wrap", gap: 2.5, alignItems: "stretch" } as const;
 
+/** Spinner + label while an API call is in flight (the API can take several seconds; see GET /slots, /replays). */
+function Loading({ label }: { label: string }) {
+  return (
+    <Box role="status" sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1.5, color: hall.muted }}>
+      <CircularProgress size={20} thickness={5} sx={{ color: hall.green }} />
+      <Typography variant="body2" sx={{ color: hall.muted, fontWeight: 600 }}>
+        {label}
+      </Typography>
+    </Box>
+  );
+}
+
 /** Watch + Play, then the slot list. Shares the picked slot between the list and the Play panel. */
 export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
   const now = useNow();
@@ -22,14 +34,14 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
   const [day, setDay] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [live, setLive] = useState<PublicRound[]>([]);
-  const [replays, setReplays] = useState<PublicRound[]>([]);
+  const [replays, setReplays] = useState<PublicRound[] | null>(null);
 
   useEffect(() => {
     api
       .get<{ slots: SlotWithStats[] }>("/slots")
       .then((r) => setRemote(r.slots))
       .catch(() => setRemote("unavailable"));
-    api.get<{ replays: PublicRound[] }>("/replays").then((r) => setReplays(r.replays), () => {});
+    api.get<{ replays: PublicRound[] }>("/replays").then((r) => setReplays(r.replays), () => setReplays([]));
     const loadLive = () => api.get<{ rounds: PublicRound[] }>("/rounds/live").then((r) => setLive(r.rounds), () => {});
     loadLive();
     const id = setInterval(loadLive, 15_000);
@@ -40,7 +52,9 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
     return (
       <Box aria-busy="true" aria-label="Loading today's rounds" sx={{ display: "grid", gap: 2.5 }}>
         <Box sx={row}>
-          <Box sx={{ ...panel, flex: "7 1 520px", height: 380 }} />
+          <Box sx={{ ...panel, flex: "7 1 520px", height: 380, display: "grid", placeItems: "center" }}>
+            <Loading label="Loading today's rounds…" />
+          </Box>
           <Box sx={{ ...panel, flex: "5 1 340px", height: 380 }} />
         </Box>
       </Box>
@@ -201,7 +215,11 @@ export function HomeBoard({ howItWorks }: { howItWorks: React.ReactNode }) {
         <Typography id="archive" variant="h2" sx={{ mt: 2, scrollMarginTop: 80 }}>
           Past rounds
         </Typography>
-        {replays.length ? (
+        {replays === null ? (
+          <Box sx={{ ...panel, py: 3 }}>
+            <Loading label="Loading past rounds…" />
+          </Box>
+        ) : replays.length ? (
           <Box component="ul" aria-labelledby="archive" sx={{ ...panel, m: 0, p: 0, listStyle: "none", overflow: "hidden" }}>
             {replays.map((r, i) => (
               <Box component="li" key={r.roundId} sx={{ borderTop: i ? `1px solid ${hall.lineSoft}` : 0 }}>
