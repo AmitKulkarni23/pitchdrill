@@ -560,7 +560,7 @@ export class PitchDrillBackendStack extends cdk.Stack {
       resources: [alertsTopic.topicArn],
     }));
     new budgets.CfnBudget(this, 'PitchDrillMonthlyBudget', {
-      budget: { budgetName: 'pitchdrill-monthly-cost', budgetType: 'COST', timeUnit: 'MONTHLY', budgetLimit: { amount: 50, unit: 'USD' } },
+      budget: { budgetName: 'pitchdrill-monthly-cost', budgetType: 'COST', timeUnit: 'MONTHLY', budgetLimit: { amount: 10, unit: 'USD' } },
       notificationsWithSubscribers: [
         { notificationType: 'ACTUAL', threshold: 80 },
         { notificationType: 'FORECASTED', threshold: 100 },
