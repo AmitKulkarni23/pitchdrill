@@ -214,6 +214,7 @@ sequenceDiagram
 - Metrics (namespace `PitchDrill`): `BookingCreated`, `RoundPaired`, `RoundStarted`, `RoundCancelled`, `BriefGenerated`, `BriefGenerationFailed`, `BriefFallbackUsed`, `RecordingMissing`, `VoteCast`, `ContactSent`.
 - Alarms (named by user impact): users cannot see schedule / book / open tickets / getting server errors (phase 1); rounds not starting (`SlotTick` errors), briefs failing (`BriefFallbackUsed`), cannot join rounds, cannot vote.
 - Every alarm's ALARM transitions (no OK messages) go to SNS `pitchdrill-alerts`; AWS Chatbot posts the topic to Slack (`SLACK_WORKSPACE_ID` / `SLACK_CHANNEL_ID` in the stack; the workspace is authorized once in the Chatbot console, the only step CDK can't do). Chatbot's guardrail is `CloudWatchReadOnlyAccess`.
+- Cost: AWS Budget `pitchdrill-monthly-cost` ($50/month, account-wide) publishes to `pitchdrill-alerts` at 80% actual and 100% forecasted spend. Guards against abuse, since throttles are global and the repo is public.
 - Every booking posts to Slack `#pitchdrill-bookings`: `createBooking` publishes a Chatbot custom notification (handle, role, slot in PT, opponent or waiting) to SNS `pitchdrill-bookings`; a failed publish is logged at WARN and never fails the booking. Skipped locally (`BOOKINGS_TOPIC_ARN_ENV` unset).
 - CloudWatch dashboard `pitchdrill`: business metrics, API requests / 4xx / 5xx / latency, alarm status, Lambda errors.
 - Frontend page views: Vercel Web Analytics (`<Analytics />` in the root layout).

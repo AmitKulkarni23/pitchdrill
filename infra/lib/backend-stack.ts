@@ -9,6 +9,7 @@ import { AccessLogFormat } from 'aws-cdk-lib/aws-apigateway';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as budgets from 'aws-cdk-lib/aws-budgets';
 import * as chatbot from 'aws-cdk-lib/aws-chatbot';
 import * as cwActions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
@@ -550,6 +551,24 @@ export class PitchDrillBackendStack extends cdk.Stack {
     const alarms = this.node.findAll().filter((c): c is cloudwatch.Alarm => c instanceof cloudwatch.Alarm);
     const alertsTopic = new sns.Topic(this, 'PitchDrillAlertsTopic', { topicName: 'pitchdrill-alerts' });
     alarms.forEach((alarm) => alarm.addAlarmAction(new cwActions.SnsAction(alertsTopic)));
+
+    // Open-source repo + global (not per-IP) throttles: alert before abuse runs up IVS/OpenRouter-driven spend.
+    // ponytail: account-wide monthly cost; filter by a cost-allocation tag if other projects share the account.
+    alertsTopic.addToResourcePolicy(new iam.PolicyStatement({
+      actions: ['sns:Publish'],
+      principals: [new iam.ServicePrincipal('budgets.amazonaws.com')],
+      resources: [alertsTopic.topicArn],
+    }));
+    new budgets.CfnBudget(this, 'PitchDrillMonthlyBudget', {
+      budget: { budgetName: 'pitchdrill-monthly-cost', budgetType: 'COST', timeUnit: 'MONTHLY', budgetLimit: { amount: 50, unit: 'USD' } },
+      notificationsWithSubscribers: [
+        { notificationType: 'ACTUAL', threshold: 80 },
+        { notificationType: 'FORECASTED', threshold: 100 },
+      ].map((n) => ({
+        notification: { ...n, comparisonOperator: 'GREATER_THAN', thresholdType: 'PERCENTAGE' },
+        subscribers: [{ subscriptionType: 'SNS', address: alertsTopic.topicArn }],
+      })),
+    });
     if (SLACK_WORKSPACE_ID && SLACK_CHANNEL_ID) {
       new chatbot.SlackChannelConfiguration(this, 'PitchDrillSlackAlerts', {
         slackChannelConfigurationName: 'pitchdrill-alerts',
